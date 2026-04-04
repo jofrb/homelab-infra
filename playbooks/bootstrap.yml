@@ -1,0 +1,35 @@
+---
+# Run this ONCE as your regular user to create the dedicated ansible system user.
+#
+#   ansible-playbook playbooks/bootstrap.yml \
+#     -u <your-regular-user> --ask-become-pass
+#
+# After this, all other playbooks run as the ansible user (no password needed).
+
+- name: Bootstrap ansible system user
+  hosts: homelab
+  become: true
+
+  tasks:
+    - name: Create ansible system user
+      ansible.builtin.user:
+        name: "{{ ansible_deploy_user }}"
+        system: true
+        shell: /bin/bash
+        create_home: true
+        state: present
+
+    - name: Deploy SSH public key for ansible user
+      ansible.posix.authorized_key:
+        user: "{{ ansible_deploy_user }}"
+        key: "{{ lookup('file', ansible_public_key) }}"
+        state: present
+
+    - name: Grant ansible user passwordless sudo
+      ansible.builtin.copy:
+        dest: "/etc/sudoers.d/{{ ansible_deploy_user }}"
+        content: "{{ ansible_deploy_user }} ALL=(ALL) NOPASSWD:ALL\n"
+        owner: root
+        group: root
+        mode: "0440"
+        validate: visudo -cf %s
