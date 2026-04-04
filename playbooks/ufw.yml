@@ -1,0 +1,33 @@
+---
+- name: Configure firewall (ufw)
+  hosts: homelab
+  become: true
+
+  tasks:
+    # Allow SSH first — before enabling ufw — so we don't lock ourselves out.
+    - name: Allow SSH from trusted networks
+      community.general.ufw:
+        rule: allow
+        port: "22"
+        proto: tcp
+        src: "{{ item }}"
+      loop: "{{ allowed_networks }}"
+
+    - name: Allow Home Assistant from trusted networks
+      community.general.ufw:
+        rule: allow
+        port: "8123"
+        proto: tcp
+        src: "{{ item }}"
+      loop: "{{ allowed_networks }}"
+
+    - name: Set default policies and enable ufw
+      community.general.ufw:
+        state: enabled
+        policy: deny
+        direction: incoming
+
+    - name: Allow all outgoing traffic
+      community.general.ufw:
+        policy: allow
+        direction: outgoing
