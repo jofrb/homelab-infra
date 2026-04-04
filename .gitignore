@@ -29,3 +29,10 @@ venv/
 .vscode/
 *.swp
 *.swo
+
+# AI
+.claude/
+.cursor/
+.copilot/
+.aider*
+.continue/
