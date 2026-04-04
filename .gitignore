@@ -1,0 +1,31 @@
+# Ansible retry files
+*.retry
+
+# Ansible vault password files
+.vault_pass
+.vault_password
+vault_password_file
+
+# Sensitive variable overrides (use vault for secrets instead)
+**/vault.yml
+**/*_vault.yml
+**/secrets.yml
+
+# Installed collections and roles
+collections/
+roles/galaxy/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# macOS
+.DS_Store
+
+# Editor
+.idea/
+.vscode/
+*.swp
+*.swo

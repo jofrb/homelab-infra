@@ -1,0 +1,7 @@
+all:
+  children:
+    homelab:
+      hosts:
+        homeserver:
+          ansible_host: 192.168.1.100   # TODO: replace with your server's IP
+          ansible_user: ansible          # TODO: replace with your SSH user

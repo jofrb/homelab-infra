@@ -1,0 +1,7 @@
+# Shared variables for all hosts
+
+# Networks allowed through the firewall (LAN + WireGuard client range).
+# Tighten these to your exact subnets if you want stricter rules.
+allowed_networks:
+  - "192.168.0.0/16"   # typical LAN range
+  - "10.0.0.0/8"       # typical WireGuard/VPN range
