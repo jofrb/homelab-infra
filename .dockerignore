@@ -1,0 +1,6 @@
+.git/
+.claude/
+collections/
+.venv/
+venv/
+*.retry
