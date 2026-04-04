@@ -13,14 +13,6 @@
         src: "{{ item }}"
       loop: "{{ allowed_networks }}"
 
-    - name: Allow Home Assistant from trusted networks
-      community.general.ufw:
-        rule: allow
-        port: "8123"
-        proto: tcp
-        src: "{{ item }}"
-      loop: "{{ allowed_networks }}"
-
     - name: Set default policies and enable ufw
       community.general.ufw:
         state: enabled
