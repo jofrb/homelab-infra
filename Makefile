@@ -1,5 +1,5 @@
 IMAGE  := homelab-ansible
-DOCKER := docker run --rm \
+DOCKER := docker run --rm -it \
             -v $(CURDIR):/ansible \
             -v $(HOME)/.ssh:/root/.ssh:ro \
             $(IMAGE)
@@ -14,11 +14,13 @@ build:
 ping: build
 	$(DOCKER) ansible all -m ping
 
-## First-time setup: create the ansible user on the server
-## Usage: make bootstrap REMOTE_USER=youruser
+## First-time setup: create the ansible user on the server.
+## Usage: make bootstrap REMOTE_USER=youruser [PRIVATE_KEY=~/.ssh/yourkey]
+## Without PRIVATE_KEY, falls back to password auth (--ask-pass).
 bootstrap: build
 	$(DOCKER) ansible-playbook playbooks/bootstrap.yml \
-	  -u $(REMOTE_USER) --ask-become-pass
+	  -u $(REMOTE_USER) --ask-become-pass \
+	  $(if $(PRIVATE_KEY),--private-key=$(PRIVATE_KEY),--ask-pass)
 
 ## Dry-run: show what would change without applying
 check: build
