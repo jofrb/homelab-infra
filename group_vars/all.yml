@@ -5,8 +5,8 @@
 ansible_deploy_user: ansible
 
 # Path to the SSH public key deployed for the ansible user.
-# Generate a dedicated key: ssh-keygen -t ed25519 -f ~/.ssh/ansible_id
-ansible_public_key: "~/.ssh/ansible_id.pub"
+# Generate a dedicated key: ssh-keygen -t ed25519 -f ~/.ssh/ansible
+ansible_public_key: "~/.ssh/ansible.pub"
 # Networks allowed through the firewall.
 allowed_networks:
   - "192.168.0.0/26"
