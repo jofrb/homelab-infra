@@ -1,0 +1,11 @@
+---
+# ZFS pool — single 4TB NVMe (WD Black SN850X)
+zfs_pool_name: data
+zfs_pool_disk: nvme-WD_BLACK_SN850X_4000GB_251906802629
+
+# Datasets to ensure exist. Order matters: parents before children.
+zfs_datasets:
+  - name: data/photos
+  - name: data/immich
+  - name: data/immich/postgres
+    recordsize: "8k"

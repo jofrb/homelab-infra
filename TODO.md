@@ -14,25 +14,50 @@ _(nothing yet — pick from Next up)_
 
 ## Next up: Immich + restic to Backblaze B2
 
-Open questions to answer before writing playbooks:
+### Decided
+- **Container runtime:** Podman (rootless) + Quadlets (systemd `.container` units) — no Docker daemon
+- **ML:** All features enabled (smart search via CLIP + face recognition). No GPU — initial indexing will be slow but day-to-day is fine.
+- **Access:** Start LAN-only, add Cloudflare Tunnel later as a separate step
 
-1. Is Docker installed on the server, or does the playbook need to install it?
-2. ZFS pool/dataset name and mount path for Immich data (e.g. `tank/immich` → `/tank/immich`)?
-3. Linux distribution on the server (Debian / Ubuntu / other)?
-4. Backblaze B2 bucket created? Bucket name + application key (keyID + applicationKey)?
-   - Store credentials in `ansible-vault`, not plain text.
-5. Restic repo password chosen and saved in Bitwarden?
-   - Without it the backups are unrecoverable.
-6. Immich domain (e.g. `immich.<domain>`)? Cloudflare Tunnel vs Traefik+LE vs LAN-only-no-TLS?
+### Server facts
+- **OS:** Ubuntu 24.04.4 LTS
+- **ZFS pool:** `data` (3.51T avail), dataset `data/photos` → `/data/photos` (96K used, effectively empty)
+- **Proposed layout:** create `data/immich` → `/data/immich` for postgres + ML model cache; use `/data/photos` as Immich upload/library dir
+- **Podman:** available in Ubuntu 24.04 repos (4.9.x), Quadlets supported
 
-Tasks (in order):
+### Still open (need your answers before writing playbooks)
+1. ZFS layout — confirm: `data/immich` for app data + `/data/photos` for library? Or put everything under one dataset?
+2. Backblaze B2 bucket name + keyID + applicationKey (create in B2 dashboard if not done)?
+   - Credentials go in `ansible-vault`, not plain text
+4. Restic repo password — save in Bitwarden **now** before starting
 
-- [ ] Decide on the open questions above
-- [ ] Playbook: install Docker + compose plugin on homeserver
-- [ ] Playbook: deploy Immich via docker-compose (server, microservices, ML, postgres, redis)
-- [ ] Playbook: install restic, configure B2 backend, daily systemd timer for `/tank/immich/library`
-- [ ] Test restore from B2 to a scratch directory (verify backups actually work)
-- [ ] DNS / TLS for Immich
+### Tasks (in order)
+- [x] Answer open questions above
+- [x] Playbook: `playbooks/podman.yml` — install Podman + slirp4netns
+- [x] Playbook: `playbooks/zfs.yml` — install ZFS, create pool + datasets (idempotent)
+- [x] `host_vars/homeserver.yml` — pool disk + dataset config
+- [x] Quadlet templates: postgres, redis, server, machine-learning + immich.network
+- [x] Playbook: `playbooks/immich.yml` — dirs, env file, Quadlets, systemd
+- [x] Vault automation: `ansible.cfg` vault_password_file = .vault_password (gitignored)
+- [ ] Create `.vault_password` locally: `openssl rand -base64 20 > .vault_password`
+- [ ] Create vault: `make vault CMD="create group_vars/homelab_vault.yml"` (keys: immich_db_password, immich_secret_key)
+- [ ] Run `make run` (kör alla playbooks i ordning)
+- [ ] Verify Immich is reachable at http://192.168.88.6:2283
+- [ ] Playbook: install restic, configure B2 backend, ZFS snapshot + daily systemd timer
+- [ ] Test restore from B2 to scratch directory (verify backups actually work)
+- [ ] DNS / TLS — Cloudflare Tunnel (separate playbook, later)
+  - Familjeåtkomst via delade album i Immich (inte hela biblioteket)
+  - Tailscale för eget bruk, Cloudflare Tunnel för familj
+
+## Backlog: secrets & pipeline
+
+- [ ] Sätt upp Bitwarden Secrets Manager (gratisnivå räcker)
+  - Installera `bws` CLI: `brew install bitwarden-secrets-manager`
+  - Skapa secret för vault-lösenordet, notera secret-ID
+  - Byt ut `.vault_password`-filen mot `scripts/vault-password.sh` som kör `bws secret get <id>`
+  - Skapa machine account + access token för CI
+- [ ] Välj CI/CD-platform (GitHub Actions?)
+- [ ] Pipeline: `make run` triggas på push till main, secrets från Bitwarden SM
 
 ## Backlog / polish
 

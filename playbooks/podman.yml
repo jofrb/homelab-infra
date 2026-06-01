@@ -1,0 +1,13 @@
+---
+- name: Install Podman
+  hosts: homelab
+  become: true
+
+  tasks:
+    - name: Install podman and slirp4netns
+      ansible.builtin.apt:
+        name:
+          - podman
+          - slirp4netns
+        state: present
+        update_cache: true

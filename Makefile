@@ -4,7 +4,7 @@ DOCKER := docker run --rm -it \
             -v $(HOME)/.ssh:/root/.ssh:ro \
             $(IMAGE)
 
-.PHONY: build ping bootstrap check run explain
+.PHONY: build ping bootstrap check run playbook vault explain
 
 ## Build the Ansible Docker image
 build:
@@ -30,15 +30,25 @@ check: build
 run: build
 	$(DOCKER) ansible-playbook site.yml
 
+## Run a single playbook. Usage: make playbook PLAYBOOK=playbooks/foo.yml [ARGS=--ask-vault-pass]
+playbook: build
+	$(DOCKER) ansible-playbook $(PLAYBOOK) $(ARGS)
+
+## Run ansible-vault commands. Usage: make vault CMD="create group_vars/homelab_vault.yml"
+vault: build
+	$(DOCKER) ansible-vault $(CMD)
+
 ## Show all available make targets with descriptions
 explain:
 	@echo ""
 	@echo "Usage: make <target>"
 	@echo ""
-	@echo "  build                  Build the Ansible Docker image (auto-runs before other targets)"
-	@echo "  ping                   Test SSH connectivity to all hosts (ansible all -m ping)"
-	@echo "  bootstrap REMOTE_USER= First-time setup: create the ansible user on the server"
-	@echo "  check                  Dry-run: show what would change without applying anything"
-	@echo "  run                    Apply all playbooks (site.yml)"
-	@echo "  explain                Show this help message"
+	@echo "  build                       Build the Ansible Docker image (auto-runs before other targets)"
+	@echo "  ping                        Test SSH connectivity to all hosts (ansible all -m ping)"
+	@echo "  bootstrap REMOTE_USER=      First-time setup: create the ansible user on the server"
+	@echo "  check                       Dry-run: show what would change without applying anything"
+	@echo "  run                         Apply all playbooks (site.yml)"
+	@echo "  playbook PLAYBOOK=path.yml  Run a single playbook (optional: ARGS=...)"
+	@echo "  vault CMD='...'             Run an ansible-vault command"
+	@echo "  explain                     Show this help message"
 	@echo ""

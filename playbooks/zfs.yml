@@ -1,0 +1,49 @@
+---
+# Idempotent ZFS setup: install ZFS, create pool (if missing), ensure datasets exist.
+#
+# Pool creation is skipped if the pool already exists — safe to re-run.
+# Disk is identified by stable by-id path to survive reboots.
+
+- name: Set up ZFS
+  hosts: homelab
+  become: true
+
+  tasks:
+    - name: Install ZFS utilities
+      ansible.builtin.apt:
+        name: zfsutils-linux
+        state: present
+        update_cache: true
+
+    - name: Check if ZFS pool exists
+      ansible.builtin.command: zpool list {{ zfs_pool_name }}
+      register: pool_check
+      failed_when: false
+      changed_when: false
+
+    - name: Create ZFS pool
+      ansible.builtin.command: >
+        zpool create
+        -o ashift=12
+        -O compression=lz4
+        -O atime=off
+        -O xattr=sa
+        {{ zfs_pool_name }}
+        /dev/disk/by-id/{{ zfs_pool_disk }}
+      when: pool_check.rc != 0
+
+    - name: Ensure ZFS pool properties are set
+      community.general.zfs:
+        name: "{{ zfs_pool_name }}"
+        state: present
+        extra_zfs_properties:
+          compression: lz4
+          atime: "off"
+          xattr: sa
+
+    - name: Ensure ZFS datasets exist
+      community.general.zfs:
+        name: "{{ item.name }}"
+        state: present
+        extra_zfs_properties: "{{ ({ 'recordsize': item.recordsize } if item.recordsize is defined else {}) }}"
+      loop: "{{ zfs_datasets }}"

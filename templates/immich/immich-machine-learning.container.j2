@@ -1,0 +1,17 @@
+[Unit]
+Description=Immich machine learning
+After=network-online.target
+
+[Container]
+Image=ghcr.io/immich-app/immich-machine-learning:{{ immich_version }}
+ContainerName=immich-machine-learning
+EnvironmentFile=/etc/immich/immich.env
+Volume={{ immich_app_dir }}/model-cache:/cache
+Network=immich.network
+
+[Service]
+Restart=always
+TimeoutStartSec=900
+
+[Install]
+WantedBy=multi-user.target

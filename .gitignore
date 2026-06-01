@@ -10,6 +10,9 @@ vault_password_file
 **/vault.yml
 **/*_vault.yml
 **/secrets.yml
+# Encrypted vault files are safe to commit
+!group_vars/*_vault.yml
+!group_vars/*/vault.yml
 
 # Installed collections and roles
 collections/

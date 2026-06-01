@@ -1,0 +1,18 @@
+[Unit]
+Description=Immich Redis
+After=network-online.target
+
+[Container]
+Image=docker.io/redis:6.2-alpine
+ContainerName=immich-redis
+Network=immich.network
+HealthCmd=redis-cli ping || exit 1
+HealthInterval=30s
+HealthRetries=5
+HealthTimeout=5s
+
+[Service]
+Restart=always
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,13 @@
+---
+# Immich
+immich_version: release
+immich_data_dir: /data/photos
+immich_app_dir: /data/immich
+immich_db_name: immich
+immich_db_user: immich
+
+# Secrets live in group_vars/homelab/vault.yml (ansible-vault encrypted).
+# Create with: ansible-vault create group_vars/homelab/vault.yml
+# Required keys:
+#   immich_db_password: <strong password>
+#   immich_secret_key:  <random 32+ char string, e.g. openssl rand -hex 32>
