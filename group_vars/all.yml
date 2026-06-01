@@ -9,4 +9,4 @@ ansible_deploy_user: ansible
 ansible_public_key: "~/.ssh/ansible.pub"
 # Networks allowed through the firewall.
 allowed_networks:
-  - "192.168.0.0/26"
+  - "192.168.88.0/24"

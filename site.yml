@@ -1,2 +1,5 @@
 ---
 - import_playbook: playbooks/ufw.yml
+- import_playbook: playbooks/zfs.yml
+- import_playbook: playbooks/podman.yml
+- import_playbook: playbooks/immich.yml

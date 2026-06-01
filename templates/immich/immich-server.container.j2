@@ -1,0 +1,20 @@
+[Unit]
+Description=Immich server
+After=network-online.target immich-postgres.service immich-redis.service
+Requires=immich-postgres.service immich-redis.service
+
+[Container]
+Image=ghcr.io/immich-app/immich-server:{{ immich_version }}
+ContainerName=immich-server
+EnvironmentFile=/etc/immich/immich.env
+Volume={{ immich_data_dir }}:{{ immich_data_dir }}
+Volume=/etc/localtime:/etc/localtime:ro
+Network=immich.network
+PublishPort=2283:2283
+
+[Service]
+Restart=always
+TimeoutStartSec=900
+
+[Install]
+WantedBy=multi-user.target

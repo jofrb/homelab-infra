@@ -1,0 +1,94 @@
+---
+# Deploy Immich via Podman Quadlets.
+#
+# Prerequisites:
+#   1. Run playbooks/podman.yml first.
+#   2. Create vault: ansible-vault create group_vars/homelab_vault.yml
+#      with keys: immich_db_password, immich_secret_key
+#
+# Run:
+#   ansible-playbook playbooks/immich.yml --ask-vault-pass
+
+- name: Deploy Immich
+  hosts: homelab
+  become: true
+
+  tasks:
+    - name: Create Immich data directories
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: directory
+        mode: "0750"
+      loop:
+        - "{{ immich_app_dir }}/postgres"
+        - "{{ immich_app_dir }}/model-cache"
+        - "{{ immich_data_dir }}"
+
+    - name: Create /etc/immich
+      ansible.builtin.file:
+        path: /etc/immich
+        state: directory
+        owner: root
+        group: root
+        mode: "0700"
+
+    - name: Deploy Immich env file
+      ansible.builtin.template:
+        src: "../templates/immich/immich.env.j2"
+        dest: /etc/immich/immich.env
+        owner: root
+        group: root
+        mode: "0600"
+      notify: Restart Immich
+
+    - name: Deploy Podman network Quadlet
+      ansible.builtin.template:
+        src: "../templates/immich/immich.network.j2"
+        dest: /etc/containers/systemd/immich.network
+        mode: "0644"
+      notify: Reload systemd
+
+    - name: Deploy container Quadlets
+      ansible.builtin.template:
+        src: "../templates/immich/{{ item }}.j2"
+        dest: "/etc/containers/systemd/{{ item }}"
+        mode: "0644"
+      loop:
+        - immich-postgres.container
+        - immich-redis.container
+        - immich-machine-learning.container
+        - immich-server.container
+      notify: Reload systemd
+
+  handlers:
+    - name: Reload systemd
+      ansible.builtin.systemd:
+        daemon_reload: true
+      listen: Reload systemd
+
+    - name: Restart Immich
+      ansible.builtin.systemd:
+        name: "{{ item }}"
+        state: restarted
+      loop:
+        - immich-postgres.service
+        - immich-redis.service
+        - immich-machine-learning.service
+        - immich-server.service
+      listen: Restart Immich
+
+- name: Enable and start Immich services
+  hosts: homelab
+  become: true
+
+  tasks:
+    - name: Enable and start Immich services
+      ansible.builtin.systemd:
+        name: "{{ item }}"
+        enabled: true
+        state: started
+      loop:
+        - immich-postgres.service
+        - immich-redis.service
+        - immich-machine-learning.service
+        - immich-server.service
