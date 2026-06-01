@@ -74,10 +74,14 @@ Tasks:
 
 ## Backlog: migrera till SOPS
 
-- [ ] Byt från ansible-vault till SOPS + age-nyckel (PIV på YubiKey)
+- [ ] Byt från ansible-vault till SOPS + age-nyckel
+- [ ] Lokalt: age-nyckel på YubiKey via PIV-sloten — hårdvarubundet, ingen nyckel i klartext
+- [ ] CI: age-nyckel som GitHub Secret (eller Bitwarden SM machine token)
+- [ ] SOPS stödjer flera mottagare — samma vault-fil krypteras för YubiKey-nyckeln + CI-nyckeln
 - [ ] Installera `community.sops` Ansible-plugin
 - [ ] Migrera `group_vars/homelab/vault.yml` till SOPS-format
 - [ ] Git-historiken innehåller ansible-vault-krypterad vault.yml — rotera lösenordet efter migration
+- [ ] OBS: `bws` CLI autentiserar med access token, inte YubiKey — SOPS+PIV är rätt väg för hårdvarubundet lokalt flöde
 
 ## Backlog: secrets & pipeline
 
