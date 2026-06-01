@@ -51,11 +51,26 @@ _(nothing yet — pick from Next up)_
 
 ## Next up: GitHub Actions pipeline
 
-- [ ] CI-workflow (på varje PR): ansible-lint + syntax check
-- [ ] CD-workflow (på merge till main): kör `make run` mot servern
-- [ ] Tailscale GitHub Action för LAN-åtkomst från runner
-- [ ] Lägg till secrets i GitHub: `ANSIBLE_VAULT_PASSWORD`, `ANSIBLE_SSH_PRIVATE_KEY`
-- [ ] Byt `.vault_password`-filen mot `scripts/vault-password.sh` (läser env var i CI, Bitwarden SM lokalt)
+Upplägg:
+- PR öppnad → GitHub-hosted runner → ansible-lint (ingen server-access)
+- PR öppnad → self-hosted runner   → make check (dry-run mot server, read-only)
+- Merge → main → du kör `make run` manuellt (ingen automatisk deploy)
+
+Säkerhet:
+- Repot görs publikt — "Require approval for all outside collaborators" aktiveras i GitHub Settings
+- YubiKey som 2FA på GitHub-kontot (redan planerat)
+- Self-hosted runner kör som dedikerad användare med begränsade sudo-rättigheter
+- Inga hemligheter som GitHub Secrets — vault-lösenord och SSH-nyckel stannar på servern
+- Pinea ALLA externa Actions till commit-hash (inte @v4-taggar)
+- Aktivera Dependabot för automatiska PR:ar när pinnade actions uppdateras
+
+Tasks:
+- [ ] Playbook: installera och registrera GitHub Actions self-hosted runner på servern
+- [ ] `.github/workflows/ci.yml` — lint (GitHub-hosted) + dry-run (self-hosted)
+- [ ] Pinea alla actions till commit-hash
+- [ ] Aktivera Dependabot för GitHub Actions
+- [ ] Aktivera "Require approval for outside collaborators" i repo-inställningar
+- [ ] Gör repot publikt
 
 ## Backlog: secrets & pipeline
 
