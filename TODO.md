@@ -72,6 +72,13 @@ Tasks:
 - [ ] Aktivera "Require approval for outside collaborators" i repo-inställningar
 - [ ] Gör repot publikt
 
+## Backlog: migrera till SOPS
+
+- [ ] Byt från ansible-vault till SOPS + age-nyckel (PIV på YubiKey)
+- [ ] Installera `community.sops` Ansible-plugin
+- [ ] Migrera `group_vars/homelab/vault.yml` till SOPS-format
+- [ ] Git-historiken innehåller ansible-vault-krypterad vault.yml — rotera lösenordet efter migration
+
 ## Backlog: secrets & pipeline
 
 - [ ] Sätt upp Bitwarden Secrets Manager (gratisnivå räcker)
