@@ -49,6 +49,14 @@ _(nothing yet — pick from Next up)_
   - Familjeåtkomst via delade album i Immich (inte hela biblioteket)
   - Tailscale för eget bruk, Cloudflare Tunnel för familj
 
+## Next up: GitHub Actions pipeline
+
+- [ ] CI-workflow (på varje PR): ansible-lint + syntax check
+- [ ] CD-workflow (på merge till main): kör `make run` mot servern
+- [ ] Tailscale GitHub Action för LAN-åtkomst från runner
+- [ ] Lägg till secrets i GitHub: `ANSIBLE_VAULT_PASSWORD`, `ANSIBLE_SSH_PRIVATE_KEY`
+- [ ] Byt `.vault_password`-filen mot `scripts/vault-password.sh` (läser env var i CI, Bitwarden SM lokalt)
+
 ## Backlog: secrets & pipeline
 
 - [ ] Sätt upp Bitwarden Secrets Manager (gratisnivå räcker)
