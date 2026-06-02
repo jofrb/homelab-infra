@@ -1,5 +1,9 @@
 ---
-- import_playbook: playbooks/ufw.yml
-- import_playbook: playbooks/zfs.yml
-- import_playbook: playbooks/podman.yml
-- import_playbook: playbooks/immich.yml
+- name: Configure firewall
+  import_playbook: playbooks/ufw.yml
+- name: Set up ZFS
+  import_playbook: playbooks/zfs.yml
+- name: Install Podman
+  import_playbook: playbooks/podman.yml
+- name: Deploy Immich
+  import_playbook: playbooks/immich.yml
