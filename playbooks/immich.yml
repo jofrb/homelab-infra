@@ -34,7 +34,7 @@
 
     - name: Deploy Immich env file
       ansible.builtin.template:
-        src: "{{ playbook_dir }}/../templates/immich/immich.env.j2"
+        src: "templates/immich/immich.env.j2"
         dest: /etc/immich/immich.env
         owner: root
         group: root
@@ -43,14 +43,14 @@
 
     - name: Deploy Podman network Quadlet
       ansible.builtin.template:
-        src: "{{ playbook_dir }}/../templates/immich/immich.network.j2"
+        src: "templates/immich/immich.network.j2"
         dest: /etc/containers/systemd/immich.network
         mode: "0644"
       notify: Reload systemd
 
     - name: Deploy container Quadlets
       ansible.builtin.template:
-        src: "{{ playbook_dir }}/../templates/immich/{{ item }}.j2"
+        src: "templates/immich/{{ item }}.j2"
         dest: "/etc/containers/systemd/{{ item }}"
         mode: "0644"
       loop:
