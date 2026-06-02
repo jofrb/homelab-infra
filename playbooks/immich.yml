@@ -18,7 +18,7 @@
       ansible.builtin.file:
         path: "{{ item }}"
         state: directory
-        mode: "0750"
+        mode: "0700"
       loop:
         - "{{ immich_app_dir }}/postgres"
         - "{{ immich_app_dir }}/model-cache"
