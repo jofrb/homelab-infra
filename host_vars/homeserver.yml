@@ -8,4 +8,4 @@ zfs_datasets:
   - name: data/photos
   - name: data/immich
   - name: data/immich/postgres
-    recordsize: "8k"
+    recordsize: "8192"
