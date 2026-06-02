@@ -3,100 +3,182 @@
 Persistent backlog so context can be closed/reopened without losing momentum.
 When picking up work, scan the **In progress** and **Next up** sections.
 
+## Current setup
+
+- **Server:** Ubuntu 24.04.4 LTS, 32 GB RAM, ZFS pool `data` (3.51T, single 4TB NVMe)
+- **VPN:** WireGuard on router, Mac, and phone
+- **Ansible:** Dockerized runner on Mac
+- **Immich:** Running via Podman Quadlets, accessible at `http://192.168.88.6:2283`
+  - ZFS datasets: `data/photos` → `/data/photos` (library), `data/immich` → `/data/immich` (postgres + ML cache)
+  - Podman rootless + Quadlets (systemd `.container` units)
+  - Vault credentials in `group_vars/homelab/vault.yml` (ansible-vault encrypted)
+
 ## Done
 
 - [x] Ansible bootstrap working end-to-end (`make bootstrap REMOTE_USER=u1frob PRIVATE_KEY=~/.ssh/<key>`)
 - [x] `make ping` succeeds against `homeserver` (192.168.88.6) as the `ansible` user
+- [x] Immich deployed and reachable at http://192.168.88.6:2283
 
 ## In progress
 
 _(nothing yet — pick from Next up)_
 
-## Next up: Immich + restic to Backblaze B2
+## Roadmap
 
-### Decided
-- **Container runtime:** Podman (rootless) + Quadlets (systemd `.container` units) — no Docker daemon
-- **ML:** All features enabled (smart search via CLIP + face recognition). No GPU — initial indexing will be slow but day-to-day is fine.
-- **Access:** Start LAN-only, add Cloudflare Tunnel later as a separate step
+### 1. Restic + Backblaze B2 — backup Immich
 
-### Server facts
-- **OS:** Ubuntu 24.04.4 LTS
-- **ZFS pool:** `data` (3.51T avail), dataset `data/photos` → `/data/photos` (96K used, effectively empty)
-- **Proposed layout:** create `data/immich` → `/data/immich` for postgres + ML model cache; use `/data/photos` as Immich upload/library dir
-- **Podman:** available in Ubuntu 24.04 repos (4.9.x), Quadlets supported
-
-### Still open (need your answers before writing playbooks)
-1. ZFS layout — confirm: `data/immich` for app data + `/data/photos` for library? Or put everything under one dataset?
-2. Backblaze B2 bucket name + keyID + applicationKey (create in B2 dashboard if not done)?
-   - Credentials go in `ansible-vault`, not plain text
-4. Restic repo password — save in Bitwarden **now** before starting
-
-### Tasks (in order)
-- [x] Answer open questions above
-- [x] Playbook: `playbooks/podman.yml` — install Podman + slirp4netns
-- [x] Playbook: `playbooks/zfs.yml` — install ZFS, create pool + datasets (idempotent)
-- [x] `host_vars/homeserver.yml` — pool disk + dataset config
-- [x] Quadlet templates: postgres, redis, server, machine-learning + immich.network
-- [x] Playbook: `playbooks/immich.yml` — dirs, env file, Quadlets, systemd
-- [x] Vault automation: `ansible.cfg` vault_password_file = .vault_password (gitignored)
-- [ ] Create `.vault_password` locally: `openssl rand -base64 20 > .vault_password`
-- [ ] Create vault: `make vault CMD="create group_vars/homelab_vault.yml"` (keys: immich_db_password, immich_secret_key)
-- [ ] Run `make run` (kör alla playbooks i ordning)
-- [ ] Verify Immich is reachable at http://192.168.88.6:2283
-- [ ] Playbook: install restic, configure B2 backend, ZFS snapshot + daily systemd timer
+- [ ] Create B2 bucket + application key in Backblaze dashboard
+- [ ] Add B2 credentials + restic repo password to ansible-vault
+- [ ] Playbook: install restic, configure B2 backend, daily systemd timer for `/data/photos`
 - [ ] Test restore from B2 to scratch directory (verify backups actually work)
-- [ ] DNS / TLS — Cloudflare Tunnel (separate playbook, later)
-  - Familjeåtkomst via delade album i Immich (inte hela biblioteket)
-  - Tailscale för eget bruk, Cloudflare Tunnel för familj
 
-## Next up: GitHub Actions pipeline
+### 2. AdGuard Home — DNS ad blocking + parental controls
 
-Upplägg:
-- PR öppnad → GitHub-hosted runner → ansible-lint (ingen server-access)
-- PR öppnad → self-hosted runner   → make check (dry-run mot server, read-only)
-- Merge → main → du kör `make run` manuellt (ingen automatisk deploy)
+- Run directly on router (no server dependency, survives reboots)
+- Per-device scheduling, category blocking, clean dashboard
+- [ ] Install and configure AdGuard Home on router
 
-Säkerhet:
-- Repot görs publikt — "Require approval for all outside collaborators" aktiveras i GitHub Settings
-- YubiKey som 2FA på GitHub-kontot (redan planerat)
-- Self-hosted runner kör som dedikerad användare med begränsade sudo-rättigheter
-- Inga hemligheter som GitHub Secrets — vault-lösenord och SSH-nyckel stannar på servern
-- Pinea ALLA externa Actions till commit-hash (inte @v4-taggar)
-- Aktivera Dependabot för automatiska PR:ar när pinnade actions uppdateras
+### 3. Traefik — reverse proxy
+
+- Clean URLs (`immich.home`, `uptime.home` etc) instead of raw IPs and ports
+- Automatic TLS via Let's Encrypt when exposing via Cloudflare Tunnel
+- Single entry point — do this before adding more services
+- [ ] Playbook: deploy Traefik container + config
+- [ ] Migrate Immich to sit behind Traefik
+
+### 4. Cloudflare Tunnel — external access
+
+- Expose services externally without opening ports on the router
+- Family access via shared Immich albums
+- [ ] Playbook: deploy Cloudflare Tunnel (after Traefik)
+- [ ] DNS for Immich and other services
+
+### 5. Monitoring stack — Uptime Kuma + Grafana + Prometheus
+
+- **Uptime Kuma:** uptime checks for all services + GitHub Pages
+- **Grafana + Prometheus + Node Exporter:** CPU, RAM, disk, network, ZFS health, per-container usage
+- [ ] Playbook: deploy Prometheus + Node Exporter
+- [ ] Playbook: deploy Grafana with dashboards
+- [ ] Playbook: deploy Uptime Kuma
+- [ ] Configure monitors for all running services + GitHub Pages
+
+### 6. Ntfy — push notifications
+
+- Self-hosted push notification server
+- Used by Uptime Kuma, restic, Healthchecks, Watchtower etc
+- [ ] Playbook: deploy Ntfy container
+- [ ] Wire up Uptime Kuma + restic alerts to Ntfy
+
+### 7. Umami — website analytics
+
+- Cookieless, GDPR-compliant, no banner needed
+- Tracks pageviews, referrers, devices for GitHub Pages site
+- Single container + Postgres
+- [ ] Playbook: deploy Umami
+- [ ] Add script tag to GitHub Pages site
+
+### 8. Syncthing — file sync + Obsidian vault
+
+- Sync folders between Mac, phone, and server
+- Obsidian vault on Mac + server; iOS via Möbius Sync (~$10 one-time)
+- [ ] Playbook: deploy Syncthing container
+- [ ] Configure Mac + phone peers
+- [ ] Set up Obsidian vault sync
+
+### 9. Paperless-ngx — document archive
+
+- OCRs scanned documents, makes PDFs searchable
+- Auto-tags by rules (sender, type etc), ML-assisted suggestions
+- Self-hosted archive for deklarationer, kvitton, försäkringar
+- [ ] Playbook: deploy Paperless-ngx
+
+### 10. Vaultwarden — self-hosted Bitwarden
+
+- Bitwarden app caches passwords locally — works offline if server is down
+- Consider keeping Bitwarden subscription as fallback or export vault regularly
+- [ ] Playbook: deploy Vaultwarden
+- [ ] Migrate Bitwarden account to self-hosted server
+
+### 11. Forgejo — GitHub mirror
+
+- Lightweight self-hosted Git (GitHub-like UI)
+- Use push mirrors to auto-sync GitHub repos locally — GitHub stays primary
+- [ ] Playbook: deploy Forgejo
+- [ ] Configure push mirrors for GitHub repos
+
+### 12. Home Assistant — home automation
+
+- [ ] Playbook: deploy Home Assistant container
+- [ ] Future: Frigate (IP cameras + local AI detection) + ESPHome (DIY sensors)
+
+### 13. Security hardening
+
+- **Fail2ban:** host-level IP banning after repeated failed logins
+- **CrowdSec:** intrusion detection, watches logs and auto-bans suspicious IPs — good once services are exposed via Cloudflare Tunnel
+- [ ] Playbook: install and configure Fail2ban
+- [ ] Playbook: deploy CrowdSec
+
+### 14. Changedetection.io — website change monitoring
+
+- Monitors any website for changes, notifies via Ntfy
+- Useful for price tracking, pages without RSS
+- [ ] Playbook: deploy Changedetection.io
+
+### 15. Watchtower — container update notifications
+
+- Watches for new container image versions, notifies via Ntfy
+- Set to notify only, not auto-update
+- [ ] Playbook: deploy Watchtower
+
+### 16. Renovate — dependency update PRs
+
+- Opens PRs when container image tags or Ansible roles have updates
+- Self-hosted bot, works with GitHub or Forgejo
+- [ ] Deploy Renovate bot
+- [ ] Configure for this repo
+
+### 17. Healthchecks — cron job monitoring
+
+- Pings via Ntfy if a scheduled job (e.g. restic backup) doesn't check in
+- Essential companion to restic
+- [ ] Playbook: deploy Healthchecks
+- [ ] Wire up restic backup timer to Healthchecks
+
+### 18. GitHub Actions CI pipeline
+
+- PR opened → GitHub-hosted runner → ansible-lint (no server access)
+- PR opened → self-hosted runner → `make check` (dry-run against server, read-only)
+- Merge to main → run `make run` manually (no auto-deploy)
+
+Security considerations:
+- Pin all external Actions to commit hash (not `@v4` tags)
+- Enable Dependabot for pinned Actions
+- Self-hosted runner runs as dedicated user with limited sudo
+- No secrets as GitHub Secrets — vault password + SSH key stay on server
+- Enable "Require approval for outside collaborators"
 
 Tasks:
-- [ ] Playbook: installera och registrera GitHub Actions self-hosted runner på servern
+- [ ] Playbook: install and register GitHub Actions self-hosted runner
 - [ ] `.github/workflows/ci.yml` — lint (GitHub-hosted) + dry-run (self-hosted)
-- [ ] Pinea alla actions till commit-hash
-- [ ] Aktivera Dependabot för GitHub Actions
-- [ ] Aktivera "Require approval for outside collaborators" i repo-inställningar
-- [ ] Gör repot publikt
+- [ ] Pin all Actions to commit hash
+- [ ] Enable Dependabot for GitHub Actions
+- [ ] Enable "Require approval for outside collaborators"
+- [ ] Make repo public
 
-## Backlog: migrera till SOPS
+### 19. SOPS secrets migration
 
-- [ ] Byt från ansible-vault till SOPS + age-nyckel
-- [ ] Lokalt: age-nyckel på YubiKey via PIV-sloten — hårdvarubundet, ingen nyckel i klartext
-- [ ] CI: age-nyckel som GitHub Secret (eller Bitwarden SM machine token)
-- [ ] SOPS stödjer flera mottagare — samma vault-fil krypteras för YubiKey-nyckeln + CI-nyckeln
-- [ ] Installera `community.sops` Ansible-plugin
-- [ ] Migrera `group_vars/homelab/vault.yml` till SOPS-format
-- [ ] Git-historiken innehåller ansible-vault-krypterad vault.yml — rotera lösenordet efter migration
-- [ ] OBS: `bws` CLI autentiserar med access token, inte YubiKey — SOPS+PIV är rätt väg för hårdvarubundet lokalt flöde
-
-## Backlog: secrets & pipeline
-
-- [ ] Sätt upp Bitwarden Secrets Manager (gratisnivå räcker)
-  - Installera `bws` CLI: `brew install bitwarden-secrets-manager`
-  - Skapa secret för vault-lösenordet, notera secret-ID
-  - Byt ut `.vault_password`-filen mot `scripts/vault-password.sh` som kör `bws secret get <id>`
-  - Skapa machine account + access token för CI
-- [ ] Välj CI/CD-platform (GitHub Actions?)
-- [ ] Pipeline: `make run` triggas på push till main, secrets från Bitwarden SM
+- Replace ansible-vault with SOPS + age key
+- age key on YubiKey via PIV slot — hardware-bound, no plaintext key
+- SOPS supports multiple recipients — same vault file encrypted for YubiKey + CI key
+- [ ] Install `community.sops` Ansible plugin
+- [ ] Migrate `group_vars/homelab/vault.yml` to SOPS format
+- [ ] Rotate vault password after migration (git history contains old encrypted vault)
 
 ## Backlog / polish
 
 - [ ] Pin `ansible_python_interpreter: /usr/bin/python3.12` in `group_vars/all.yml` to silence discovery warning
-- [ ] Update `allowed_networks` in `group_vars/all.yml` — currently `192.168.0.0/26`, but actual LAN is `192.168.88.0/24`. UFW playbook will lock you out otherwise.
+- [x] Update `allowed_networks` in `group_vars/all.yml` — `192.168.88.0/24`
 - [ ] Disable `PasswordAuthentication` in sshd for u1frob (after confirming key auth works)
-- [ ] Save `~/.ssh/ansible` private key to Bitwarden as a secure note (currently only on this mac)
-- [ ] Replace `ansible.cfg` `host_key_checking = False` with a checked-in `known_hosts` once the server is stable
+- [ ] Save `~/.ssh/ansible` private key to Bitwarden as a secure note (currently only on this Mac)
+- [ ] Replace `ansible.cfg` `host_key_checking = False` with a checked-in `known_hosts` once server is stable
+- [ ] Immich CLI on Mac for bulk photo import (`npm install -g @immich/cli`)
