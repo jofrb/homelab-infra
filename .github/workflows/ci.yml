@@ -23,5 +23,8 @@ jobs:
           pip install ansible ansible-lint
           ansible-galaxy collection install -r requirements.yml
 
+      - name: Write vault password
+        run: echo "${{ secrets.VAULT_PASSWORD }}" > .vault_password
+
       - name: Run ansible-lint
         run: ansible-lint
