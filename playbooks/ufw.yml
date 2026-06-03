@@ -31,3 +31,16 @@
         proto: tcp
         src: "{{ item }}"
       loop: "{{ allowed_networks }}"
+
+    - name: Allow container-to-container and container-to-host traffic (Podman)
+      community.general.ufw:
+        rule: allow
+        src: "10.89.0.0/16"
+        dest: "10.89.0.0/16"
+
+    - name: Allow DNS from Podman containers to host
+      community.general.ufw:
+        rule: allow
+        port: "53"
+        proto: any
+        src: "10.89.0.0/16"
