@@ -6,8 +6,9 @@ Requires=immich-postgres.service immich-redis.service
 [Container]
 Image=ghcr.io/immich-app/immich-server:{{ immich_version }}
 ContainerName=immich-server
+HostName=immich-server
 EnvironmentFile=/etc/immich/immich.env
-Volume={{ immich_data_dir }}:{{ immich_data_dir }}
+Volume={{ immich_data_dir }}:/usr/src/app/upload
 Volume=/etc/localtime:/etc/localtime:ro
 Network=immich.network
 PublishPort=2283:2283

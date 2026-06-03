@@ -14,7 +14,7 @@
   become: true
 
   tasks:
-    - name: Create Immich data directories
+    - name: Create Immich app directories
       ansible.builtin.file:
         path: "{{ item }}"
         state: directory
@@ -22,7 +22,34 @@
       loop:
         - "{{ immich_app_dir }}/postgres"
         - "{{ immich_app_dir }}/model-cache"
-        - "{{ immich_data_dir }}"
+
+    - name: Create Immich upload subdirectories
+      ansible.builtin.file:
+        path: "{{ immich_data_dir }}/{{ item }}"
+        state: directory
+        mode: "0755"
+      loop:
+        - ""
+        - thumbs
+        - upload
+        - backups
+        - library
+        - profile
+        - encoded-video
+
+    - name: Create Immich upload sentinel files
+      ansible.builtin.copy:
+        content: ""
+        dest: "{{ immich_data_dir }}/{{ item }}/.immich"
+        force: false
+        mode: "0644"
+      loop:
+        - thumbs
+        - upload
+        - backups
+        - library
+        - profile
+        - encoded-video
 
     - name: Create /etc/immich
       ansible.builtin.file:
@@ -34,7 +61,7 @@
 
     - name: Deploy Immich env file
       ansible.builtin.template:
-        src: "templates/immich/immich.env.j2"
+        src: "{{ playbook_dir }}/templates/immich/immich.env.j2"
         dest: /etc/immich/immich.env
         owner: root
         group: root
@@ -43,14 +70,14 @@
 
     - name: Deploy Podman network Quadlet
       ansible.builtin.template:
-        src: "templates/immich/immich.network.j2"
+        src: "{{ playbook_dir }}/templates/immich/immich.network.j2"
         dest: /etc/containers/systemd/immich.network
         mode: "0644"
       notify: Reload systemd
 
     - name: Deploy container Quadlets
       ansible.builtin.template:
-        src: "templates/immich/{{ item }}.j2"
+        src: "{{ playbook_dir }}/templates/immich/{{ item }}.j2"
         dest: "/etc/containers/systemd/{{ item }}"
         mode: "0644"
       loop:

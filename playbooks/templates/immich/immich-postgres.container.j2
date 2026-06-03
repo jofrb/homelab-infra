@@ -5,6 +5,7 @@ After=network-online.target
 [Container]
 Image=ghcr.io/immich-app/postgres:14-vectorchord0.4.3-pgvectors0.2.0
 ContainerName=immich-postgres
+HostName=immich-postgres
 EnvironmentFile=/etc/immich/immich.env
 Volume={{ immich_app_dir }}/postgres:/var/lib/postgresql/data
 Network=immich.network
