@@ -44,3 +44,11 @@
         port: "53"
         proto: any
         src: "10.89.0.0/16"
+
+    - name: Allow forwarding of Podman-published ports to containers
+      community.general.ufw:
+        rule: allow
+        route: true
+        proto: tcp
+        dest: "10.89.0.0/16"
+        port: "2283"
