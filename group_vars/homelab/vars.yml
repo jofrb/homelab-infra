@@ -2,6 +2,7 @@
 # Immich
 immich_version: release
 immich_data_dir: /data/photos
+immich_upload_dir: /usr/src/app/upload  # fixed internal path in the Immich container image
 immich_app_dir: /data/immich
 immich_db_name: immich
 immich_db_user: immich
