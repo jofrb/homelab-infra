@@ -2,6 +2,7 @@
 
 ## Branching and Pull Requests
 
+- Always pull the latest `main` before creating a new branch (`git checkout main && git pull`).
 - Always create a new branch for every piece of work before making changes.
 - One feature or fix per PR — keep each PR tightly scoped to a single concern.
 - Never commit directly to `main`.
