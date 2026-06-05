@@ -1,0 +1,82 @@
+---
+# Install restic and configure daily backups of /data/photos to Backblaze B2.
+#
+# Prerequisites:
+#   vault.yml must contain:
+#     restic_b2_account_id:    <B2 application key ID>
+#     restic_b2_account_key:   <B2 application key>
+#     restic_repository_password: <strong passphrase for restic repo encryption>
+#
+# First-time repo init (run once after deploying this playbook):
+#   systemctl start restic-backup.service   # will init the repo if it doesn't exist
+#
+# Or manually:
+#   sudo -E restic -r b2:<bucket>: init
+#
+# Run:
+#   ansible-playbook playbooks/restic.yml --ask-vault-pass
+
+- name: Set up restic backups to Backblaze B2
+  hosts: homelab
+  become: true
+
+  tasks:
+    - name: Install restic
+      ansible.builtin.apt:
+        name: restic
+        state: present
+        update_cache: true
+
+    - name: Create /etc/restic
+      ansible.builtin.file:
+        path: /etc/restic
+        state: directory
+        owner: root
+        group: root
+        mode: "0700"
+
+    - name: Deploy restic environment file
+      ansible.builtin.template:
+        src: "{{ playbook_dir }}/templates/restic/restic.env.j2"
+        dest: /etc/restic/b2.env
+        owner: root
+        group: root
+        mode: "0600"
+      notify: Reload systemd
+
+    - name: Deploy restic backup script
+      ansible.builtin.template:
+        src: "{{ playbook_dir }}/templates/restic/restic-backup.sh.j2"
+        dest: /usr/local/bin/restic-backup
+        owner: root
+        group: root
+        mode: "0750"
+
+    - name: Deploy restic backup systemd service
+      ansible.builtin.template:
+        src: "{{ playbook_dir }}/templates/restic/restic-backup.service.j2"
+        dest: /etc/systemd/system/restic-backup.service
+        owner: root
+        group: root
+        mode: "0644"
+      notify: Reload systemd
+
+    - name: Deploy restic backup systemd timer
+      ansible.builtin.template:
+        src: "{{ playbook_dir }}/templates/restic/restic-backup.timer.j2"
+        dest: /etc/systemd/system/restic-backup.timer
+        owner: root
+        group: root
+        mode: "0644"
+      notify: Reload systemd
+
+    - name: Enable and start restic backup timer
+      ansible.builtin.systemd:
+        name: restic-backup.timer
+        enabled: true
+        state: started
+
+  handlers:
+    - name: Reload systemd
+      ansible.builtin.systemd:
+        daemon_reload: true

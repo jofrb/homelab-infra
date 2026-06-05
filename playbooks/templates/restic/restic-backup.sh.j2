@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ENV_FILE=/etc/restic/b2.env
+# shellcheck source=/dev/null
+source "$ENV_FILE"
+
+export B2_ACCOUNT_ID B2_ACCOUNT_KEY RESTIC_REPOSITORY RESTIC_PASSWORD
+
+# Initialise the repository if it doesn't exist yet.
+if ! restic snapshots --no-lock &>/dev/null; then
+  echo "Initialising restic repository..."
+  restic init
+fi
+
+restic backup \
+  --verbose \
+  --tag photos \
+  {{ restic_backup_paths | join(' \\\n  ') }}
+
+# Keep 7 daily, 4 weekly, 12 monthly snapshots; remove the rest.
+restic forget \
+  --prune \
+  --keep-daily   7 \
+  --keep-weekly  4 \
+  --keep-monthly 12 \
+  --tag photos
