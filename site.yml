@@ -7,3 +7,5 @@
   import_playbook: playbooks/podman.yml
 - name: Deploy Immich
   import_playbook: playbooks/immich.yml
+- name: Set up restic backups
+  import_playbook: playbooks/restic.yml

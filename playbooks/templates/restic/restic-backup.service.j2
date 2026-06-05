@@ -1,0 +1,16 @@
+[Unit]
+Description=Restic backup to Backblaze B2
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/restic-backup
+# Limit I/O so backup doesn't saturate the disk during the day
+IOSchedulingClass=idle
+CPUSchedulingPolicy=idle
+Nice=19
+# Capture full output to the journal
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=restic-backup

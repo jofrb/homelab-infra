@@ -21,16 +21,17 @@ When picking up work, scan the **In progress** and **Next up** sections.
 
 ## In progress
 
-_(nothing yet — pick from Next up)_
+### 1. Restic + Backblaze B2
+- [x] Playbook: install restic, configure B2 backend, daily systemd timer for `/data/photos`
+- [ ] Create B2 bucket + application key in Backblaze dashboard
+- [ ] Add B2 credentials + restic repo password to ansible-vault
+- [ ] Test restore from B2 to scratch directory (verify backups actually work)
 
 ## Roadmap
 
 ### 1. Restic + Backblaze B2 — backup Immich
 
-- [ ] Create B2 bucket + application key in Backblaze dashboard
-- [ ] Add B2 credentials + restic repo password to ansible-vault
-- [ ] Playbook: install restic, configure B2 backend, daily systemd timer for `/data/photos`
-- [ ] Test restore from B2 to scratch directory (verify backups actually work)
+See **In progress** section.
 
 ### 2. AdGuard Home — DNS ad blocking + parental controls
 

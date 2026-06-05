@@ -7,8 +7,16 @@ immich_app_dir: /data/immich
 immich_db_name: immich
 immich_db_user: immich
 
+# Restic / Backblaze B2
+restic_b2_bucket: homelab-restic-backup   # change to your actual B2 bucket name
+restic_backup_paths:
+  - /data/photos
+
 # Secrets live in group_vars/homelab/vault.yml (ansible-vault encrypted).
 # Create with: ansible-vault create group_vars/homelab/vault.yml
 # Required keys:
-#   immich_db_password: <strong password>
-#   immich_secret_key:  <random 32+ char string, e.g. openssl rand -hex 32>
+#   immich_db_password:         <strong password>
+#   immich_secret_key:          <random 32+ char string, e.g. openssl rand -hex 32>
+#   restic_b2_account_id:       <B2 application key ID>
+#   restic_b2_account_key:      <B2 application key>
+#   restic_repository_password: <strong passphrase, e.g. openssl rand -base64 32>

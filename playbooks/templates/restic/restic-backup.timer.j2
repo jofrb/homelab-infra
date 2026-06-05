@@ -1,0 +1,12 @@
+[Unit]
+Description=Daily restic backup to Backblaze B2
+
+[Timer]
+# Run once a day at 03:00, with up to 30 min random delay so all
+# B2 customers don't hammer the API simultaneously.
+OnCalendar=*-*-* 03:00:00
+RandomizedDelaySec=1800
+Persistent=true
+
+[Install]
+WantedBy=timers.target
