@@ -77,13 +77,37 @@ _(nothing yet — pick from Next up)_
 - [ ] Playbook: deploy Umami
 - [ ] Add script tag to GitHub Pages site
 
-### 8. Syncthing — file sync + Obsidian vault
+### 8. Knowledge repository — Syncthing + git history + Codex CLI access
 
-- Sync folders between Mac, phone, and server
-- Obsidian vault on Mac + server; iOS via Möbius Sync (~$10 one-time)
-- [ ] Playbook: deploy Syncthing container
-- [ ] Configure Mac + phone peers
-- [ ] Set up Obsidian vault sync
+- **Sync:** Syncthing, three peers — Mac, phone, server — all over WireGuard only
+  (disable public discovery/relay servers, no NAT traversal needed)
+- Obsidian vault lives at `/data/knowledge` on the server (own ZFS dataset,
+  mirrors the `data/photos` pattern); iOS via Möbius Sync (~$10 one-time,
+  since Syncthing itself doesn't run standalone on iOS)
+- **History:** small watcher on the server (`inotify` + debounce, systemd
+  path unit) auto-commits `/data/knowledge` to a local git repo on every
+  change — catches edits from any peer (Mac, phone, or agent) without
+  needing a git client on mobile. Improves conflict *resolution*
+  (diff/merge a `.sync-conflict` file) — doesn't prevent Syncthing conflicts
+  from occurring in the first place
+- **Intelligence access:** Codex CLI installed on the server, run inside
+  `tmux` for persistence; ChatGPT mobile app's remote relay (QR-pair) gives
+  phone-initiated *new* sessions, not just reattach — the gap Claude Code's
+  remote control has today. Inference always runs on OpenAI's servers
+  regardless of where the CLI is invoked from, so server hardware is a
+  non-issue
+- **Backup:** extend the restic → B2 setup (see item 1) to also cover
+  `/data/knowledge`, with its own tag; consider a tighter retention window
+  than the daily photos timer since text changes are cheap to snapshot —
+  decide when picking this up
+- [ ] Playbook: deploy Syncthing (Mac + phone + server peers)
+- [ ] Create `data/knowledge` ZFS dataset, mount at `/data/knowledge`
+- [ ] Set up Obsidian vault sync (Mac, phone via Möbius Sync)
+- [ ] Playbook: git auto-commit watcher for `/data/knowledge`
+- [ ] Install Codex CLI on server, verify `tmux` persistence works over SSH
+- [ ] Pair ChatGPT mobile app remote relay to the server
+- [ ] Extend restic backup paths + tag for `/data/knowledge` (after item 1
+      is done)
 
 ### 9. Paperless-ngx — document archive
 
