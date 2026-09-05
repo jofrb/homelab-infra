@@ -8,7 +8,7 @@ immich_db_name: immich
 immich_db_user: immich
 
 # Restic / Backblaze B2
-restic_b2_bucket: homelab-restic-backup   # change to your actual B2 bucket name
+restic_b2_bucket: strutserver-restic-backup
 restic_backup_paths:
   - /data/photos
 
