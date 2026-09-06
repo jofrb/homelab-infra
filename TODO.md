@@ -18,20 +18,24 @@ When picking up work, scan the **In progress** and **Next up** sections.
 - [x] Ansible bootstrap working end-to-end (`make bootstrap REMOTE_USER=u1frob PRIVATE_KEY=~/.ssh/<key>`)
 - [x] `make ping` succeeds against `homeserver` (192.168.88.6) as the `ansible` user
 - [x] Immich deployed and reachable at http://192.168.88.6:2283
+- [x] Restic + Backblaze B2 backup for `/data/photos`, restore verified end-to-end
+      (97.6 GiB restored to `/data/restic-restore-test`, `diff` against live data clean)
 
 ## In progress
 
-### 1. Restic + Backblaze B2
-- [x] Playbook: install restic, configure B2 backend, daily systemd timer for `/data/photos`
-- [x] Create B2 bucket + application key in Backblaze dashboard (`strutserver-restic-backup`)
-- [x] Add B2 credentials + restic repo password to ansible-vault
-- [ ] Test restore from B2 to scratch directory (verify backups actually work) — in progress, restoring to `/data/restic-restore-test`
+_(nothing yet — pick from Next up)_
 
 ## Roadmap
 
-### 1. Restic + Backblaze B2 — backup Immich
+### 1. Restic + Backblaze B2 — integrity checks
 
-See **In progress** section.
+Base backup/restore done (see Done section). Follow-up hardening:
+
+- [ ] Playbook: weekly `restic check` timer (e.g. `--read-data-subset=10%`) to catch
+      B2-side repo corruption before we need a restore, not during one
+- [ ] Playbook: quarterly full `restic check --read-data` for complete repo verification
+- [ ] Verify/enable ZFS scrub schedule for the `data` pool (silent bitrot detection
+      on the source side — detects only, can't repair on this single-disk pool)
 
 ### 2. AdGuard Home — DNS ad blocking + parental controls
 
