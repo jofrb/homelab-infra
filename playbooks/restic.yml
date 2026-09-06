@@ -35,6 +35,14 @@
         group: root
         mode: "0700"
 
+    - name: Create restic cache directory
+      ansible.builtin.file:
+        path: /var/cache/restic
+        state: directory
+        owner: root
+        group: root
+        mode: "0700"
+
     - name: Deploy restic environment file
       ansible.builtin.template:
         src: "{{ playbook_dir }}/templates/restic/restic.env.j2"
