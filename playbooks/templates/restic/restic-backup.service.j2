@@ -5,6 +5,7 @@ Wants=network-online.target
 
 [Service]
 Type=oneshot
+Environment=RESTIC_CACHE_DIR=/var/cache/restic
 ExecStart=/usr/local/bin/restic-backup
 # Limit I/O so backup doesn't saturate the disk during the day
 IOSchedulingClass=idle
