@@ -23,9 +23,9 @@ When picking up work, scan the **In progress** and **Next up** sections.
 
 ### 1. Restic + Backblaze B2
 - [x] Playbook: install restic, configure B2 backend, daily systemd timer for `/data/photos`
-- [ ] Create B2 bucket + application key in Backblaze dashboard
-- [ ] Add B2 credentials + restic repo password to ansible-vault
-- [ ] Test restore from B2 to scratch directory (verify backups actually work)
+- [x] Create B2 bucket + application key in Backblaze dashboard (`strutserver-restic-backup`)
+- [x] Add B2 credentials + restic repo password to ansible-vault
+- [ ] Test restore from B2 to scratch directory (verify backups actually work) — in progress, restoring to `/data/restic-restore-test`
 
 ## Roadmap
 
