@@ -31,11 +31,100 @@ _(nothing yet — pick from Next up)_
 
 Base backup/restore done (see Done section). Follow-up hardening:
 
-- [ ] Playbook: weekly `restic check` timer (e.g. `--read-data-subset=10%`) to catch
-      B2-side repo corruption before we need a restore, not during one
-- [ ] Playbook: quarterly full `restic check --read-data` for complete repo verification
-- [ ] Verify/enable ZFS scrub schedule for the `data` pool (silent bitrot detection
-      on the source side — detects only, can't repair on this single-disk pool)
+**Context — single-disk ZFS pool, no ECC RAM (both accepted risks):**
+`data` pool is one NVMe (`host_vars/homeserver.yml`), no mirror/raidz — confirmed via
+`zpool create` in `playbooks/zfs.yml` (single disk arg, no `mirror` keyword) and `lsblk`
+showing only one `zfs_member` device. No ECC means a RAM bit-flip before a file is
+checksummed can't be caught by anything (ZFS, restic, or manual diffing) — already
+accepted, not actionable. Everything below is about the *catchable* corruption: bits
+rotting on disk after being written correctly.
+
+**The plan — detect via ZFS, repair via restic (self-healing without a mirror):**
+ZFS checksums every block at write time regardless of redundancy; scrub re-verifies
+those checksums by reading the whole pool. On a single disk it can't auto-repair (no
+second copy locally) — but restic in B2 *is* that second copy, one manual/scripted
+step away instead of instant. That's the loop to build:
+
+1. **Detect:** `zpool scrub data`, **weekly**. This is a drive-class call, not an
+   NVMe-vs-spinning one: OpenZFS's own guidance is weekly for consumer-grade disks,
+   monthly for enterprise-grade — this is a single consumer NVMe, so weekly is the
+   correct default, and scrubs are read-only so there's no wear-cost reason to
+   stretch the interval.
+2. **Identify:** after scrub finishes (`zpool wait -t scrub data`), check
+   `zpool status -v data` for a `errors: Permanent errors have been detected in the
+   following files:` section — this lists the exact damaged file paths, no manual
+   hunting needed.
+3. **Repair:** for each flagged path, `restic restore latest --target / --include
+   <path>` — restores just that file from B2, not a full 97GB restore.
+4. Wrap 1–3 in a script + systemd service/timer (mirrors the `restic-backup` pattern:
+   script in `playbooks/templates/`, deployed + enabled via a playbook). Notify on
+   result either way once Ntfy exists (see item 6) — silently-clean is still worth
+   logging, not just failures.
+
+Caveat (not a blocker): this only works if a restic snapshot *older than the
+corruption event* still exists. In practice this is rarely an issue — ZFS returns an
+I/O error instead of silently serving corrupted data, so `restic backup` would itself
+have errored trying to read an already-corrupted file rather than faithfully backing
+up garbage. Common case is "B2 already has a clean copy from before the bit flip."
+
+**Dedup nuance — snapshot count ≠ redundancy:** restic is content-addressed. If a
+photo's bytes are unchanged between two snapshots, both point at the *same* stored
+blob in B2 — there is one physical copy, not many. Snapshot history gives rollback
+for content that *changed* or was deleted; it does **not** give extra copies of
+unchanged files to fall back on if that one blob rots. Don't rely on "we have 300
+daily snapshots" as redundancy against B2-side bit rot — it isn't.
+
+**The other direction — healing B2 *from* the server, when a B2 blob is the one
+that's corrupted:** `restic check --read-data[-subset]` finds it, but a naive
+`restic backup` afterwards does **not** fix it — restic's index says that hash
+already exists in the repo, so it skips re-uploading without re-verifying the
+actual bytes in B2. The real repair sequence:
+1. `restic check --read-data` reports the damaged pack ID(s).
+2. `restic find --pack <id>` to see which snapshots/files reference it.
+3. Remove the bad pack and rebuild the index so restic believes that data is
+   genuinely missing (`restic rebuild-index`, possibly after manually deleting the
+   corrupt pack object from the bucket).
+4. Re-run `restic backup` — now it re-chunks and re-uploads fresh from the
+   still-good local copy.
+
+This only works if the local copy is still intact at the time you notice — i.e. it's
+mutual healing (B2 heals from server, server heals from B2), not automatic, and it
+fails if *both* sides are corrupted for the same file at once. With a single local
+disk + single off-site copy (2 copies total, not 3), that joint-failure case has no
+recovery path — accepted risk, see risk math below.
+
+**Cadence — final decision: weekly `zpool scrub` + monthly `restic check
+--read-data-subset=n/6` (full B2 repo covered every 6 months).**
+`--read-data-subset` takes either a random `X%` or a deterministic `n/t` (splits the
+repo into `t` equal non-overlapping parts, checks part `n` this run). Cycling `n`
+from 1→6 across 6 monthly runs with `t=6` guarantees exactly 100% of the repo
+checked every 6 months with zero overlap — better than a random %, which never
+guarantees full coverage.
+
+Cost and risk (2026-09, B2 pricing ~$6/TB-month, $0.01/GB egress beyond free tier,
+worked for a ~2TB repo):
+- ~333GB/month downloaded (1/6 of 2TB) — comfortably under B2's free-egress
+  allowance (3× average monthly storage, i.e. ~6TB/month free), so this cadence
+  costs **$0** in practice, ~$3.33/month worst-case if ever billed.
+- B2 quotes 11 nines annual durability per object (~1e-11/object/year). For a ~2TB
+  repo (order 1e5 pack objects) that's roughly a 1-in-100,000 chance of *any*
+  single B2-side object loss over 3 years. Requiring the *same* file to *also* be
+  corrupted locally in the *same* window multiplies two small independent
+  probabilities together — library-wide irreversible-loss risk over a 3-year
+  window is comfortably below 1-in-a-million, dominated by B2's durability claim,
+  not by how often we check.
+- What this math does *not* cover: correlated failures (bad `forget --prune`,
+  ransomware hitting both live and backup, lapsed B2 billing, human error) — those
+  aren't mitigated by checking more often, they need separate controls (e.g. B2
+  Object Lock, currently disabled/accepted).
+
+Tasks:
+- [ ] Playbook: monthly `restic check --read-data-subset=n/6` timer (cycling `n`
+      1→6, restarting every 6 months) to catch B2-side repo corruption before we
+      need a restore, not during one — this is a *different* failure mode than ZFS
+      scrub (verifies B2's copy, not the local disk)
+- [ ] Playbook: weekly `zpool scrub data` + parse `zpool status -v` + targeted
+      restic restore for any flagged files (the detect→identify→repair loop above)
 
 ### 2. AdGuard Home — DNS ad blocking + parental controls
 
