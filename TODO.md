@@ -7,7 +7,15 @@ When picking up work, scan the **In progress** and **Next up** sections.
 
 - **Server:** Ubuntu 24.04.4 LTS, 32 GB RAM, ZFS pool `data` (3.51T, single 4TB NVMe)
 - **VPN:** WireGuard on router, Mac, and phone
-- **Ansible:** Dockerized runner on Mac
+- **Ansible:** Dockerized runner on Mac — image pinned by digest, `ansible==10.7.0`,
+  Galaxy collections pinned in `requirements.yml`. Server-side apt packages
+  (podman, zfsutils-linux, restic) stay unpinned on purpose — Ubuntu's archive only
+  keeps the latest revision per release, so hardcoding a version there risks
+  breaking a from-scratch reprovision later; the OS layer tracks Ubuntu's own
+  update cadence instead. Renovate (config in a follow-up PR) keeps the client-side pins
+  current. Darwin-vs-Linux controller-runtime parity is a separate, deliberately
+  deferred question — see item 18, it stops mattering once the self-hosted runner
+  exists and real applies move there.
 - **Immich:** Running via Podman Quadlets, accessible at `http://192.168.88.6:2283`
   - ZFS datasets: `data/photos` → `/data/photos` (library), `data/immich` → `/data/immich` (postgres + ML cache)
   - Podman rootless + Quadlets (systemd `.container` units)
@@ -251,7 +259,11 @@ Tasks:
 ### 16. Renovate — dependency update PRs
 
 - Opens PRs when container image tags or Ansible roles have updates
-- Self-hosted bot, works with GitHub or Forgejo
+- Self-hosted bot, works with GitHub or Forgejo — this is about a Renovate
+  *instance* for tracking container updates across the whole homelab
+  (Immich, future services), a bigger separate project
+- For **this repo specifically**, the free GitHub App + `renovate.json` (see
+  item 18) already covers it — no need to wait for this item
 - [ ] Deploy Renovate bot
 - [ ] Configure for this repo
 
@@ -270,7 +282,9 @@ Tasks:
 
 Security considerations:
 - Pin all external Actions to commit hash (not `@v4` tags)
-- Enable Dependabot for pinned Actions
+- Renovate keeps pinned Actions current, not Dependabot — Dependabot only covers
+  Actions here, Renovate also handles the Dockerfile digest and Galaxy
+  collections pinned above with one config file (`renovate.json`)
 - Self-hosted runner runs as dedicated user with limited sudo
 - No secrets as GitHub Secrets — vault password + SSH key stay on server
 - Enable "Require approval for outside collaborators"
@@ -278,8 +292,10 @@ Security considerations:
 Tasks:
 - [ ] Playbook: install and register GitHub Actions self-hosted runner
 - [ ] `.github/workflows/ci.yml` — lint (GitHub-hosted) + dry-run (self-hosted)
-- [ ] Pin all Actions to commit hash
-- [ ] Enable Dependabot for GitHub Actions
+- [x] Pin all Actions to commit hash (already the case in `ci.yml`)
+- [ ] Add `renovate.json` (Actions digests, Dockerfile digest, Galaxy collections)
+- [ ] Install the Renovate GitHub App on this repo (config alone doesn't run it —
+      see item 16 note)
 - [ ] Enable "Require approval for outside collaborators"
 - [ ] Make repo public
 
