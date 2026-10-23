@@ -1,5 +1,6 @@
 ---
-# Install restic and configure daily backups of /data/photos to Backblaze B2.
+# Install restic and configure daily backups of /data/photos to Backblaze B2,
+# plus a monthly integrity check (restic check --read-data-subset=n/6).
 #
 # Prerequisites:
 #   vault.yml must contain:
@@ -81,6 +82,46 @@
     - name: Enable and start restic backup timer
       ansible.builtin.systemd:
         name: restic-backup.timer
+        enabled: true
+        state: started
+
+    - name: Create restic check state directory
+      ansible.builtin.file:
+        path: /var/lib/restic-check
+        state: directory
+        owner: root
+        group: root
+        mode: "0700"
+
+    - name: Deploy restic check script
+      ansible.builtin.template:
+        src: "{{ playbook_dir }}/templates/restic/restic-check.sh.j2"
+        dest: /usr/local/bin/restic-check
+        owner: root
+        group: root
+        mode: "0750"
+
+    - name: Deploy restic check systemd service
+      ansible.builtin.template:
+        src: "{{ playbook_dir }}/templates/restic/restic-check.service.j2"
+        dest: /etc/systemd/system/restic-check.service
+        owner: root
+        group: root
+        mode: "0644"
+      notify: Reload systemd
+
+    - name: Deploy restic check systemd timer
+      ansible.builtin.template:
+        src: "{{ playbook_dir }}/templates/restic/restic-check.timer.j2"
+        dest: /etc/systemd/system/restic-check.timer
+        owner: root
+        group: root
+        mode: "0644"
+      notify: Reload systemd
+
+    - name: Enable and start restic check timer
+      ansible.builtin.systemd:
+        name: restic-check.timer
         enabled: true
         state: started
 
