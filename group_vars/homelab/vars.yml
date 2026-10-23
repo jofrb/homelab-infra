@@ -20,3 +20,4 @@ restic_backup_paths:
 #   restic_b2_account_id:       <B2 application key ID>
 #   restic_b2_account_key:      <B2 application key>
 #   restic_repository_password: <strong passphrase, e.g. openssl rand -base64 32>
+#   healthchecks_ping_key:      <healthchecks.io project ping key (Settings → Ping key)>

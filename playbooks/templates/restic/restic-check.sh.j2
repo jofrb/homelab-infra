@@ -9,6 +9,11 @@ source "$ENV_FILE"
 
 export B2_ACCOUNT_ID B2_ACCOUNT_KEY RESTIC_REPOSITORY RESTIC_PASSWORD
 
+# Report start and exit code to healthchecks.io (see restic-backup).
+HC_URL="https://hc-ping.com/{{ healthchecks_ping_key }}/restic-check"
+curl -fsS -m 10 --retry 3 -o /dev/null "$HC_URL/start" || true
+trap 'curl -fsS -m 10 --retry 3 -o /dev/null "$HC_URL/$?" || true' EXIT
+
 # Cycle n through 1..PARTS so each run verifies a different, non-overlapping
 # 1/PARTS slice of the repo; the whole repo is covered every PARTS runs.
 n=$(cat "$STATE_FILE" 2>/dev/null || echo 1)

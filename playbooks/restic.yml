@@ -7,6 +7,10 @@
 #     restic_b2_account_id:    <B2 application key ID>
 #     restic_b2_account_key:   <B2 application key>
 #     restic_repository_password: <strong passphrase for restic repo encryption>
+#     healthchecks_ping_key:   <healthchecks.io project ping key>
+#
+#   healthchecks.io must have checks with slugs "restic-backup" and
+#   "restic-check" in that project, otherwise pings 404 and no alerts fire.
 #
 # First-time repo init (run once after deploying this playbook):
 #   systemctl start restic-backup.service   # will init the repo if it doesn't exist
@@ -22,9 +26,11 @@
   become: true
 
   tasks:
-    - name: Install restic
+    - name: Install restic and curl
       ansible.builtin.apt:
-        name: restic
+        name:
+          - restic
+          - curl
         state: present
         update_cache: true
 

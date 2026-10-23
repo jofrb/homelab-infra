@@ -33,6 +33,24 @@ When picking up work, scan the **In progress** and **Next up** sections.
 
 _(nothing yet — pick from Next up)_
 
+## Next up
+
+### Server-down alert (heartbeat)
+
+Get a push via ntfy if the server is off / unreachable. The server can't report
+its own death, so this is a dead man's switch: a systemd timer pings healthchecks.io
+4× a day, and healthchecks.io alerts via ntfy.sh when a ping is missed. Both must
+stay off-box (see items 6 and 17). Also fires if home internet is down — fine,
+the server is unreachable either way.
+
+- Detection delay is up to ~7 h (6 h period + grace). Pinging more often (e.g.
+  every 15 min) costs nothing extra if faster alerts are wanted later.
+- [ ] healthchecks.io: check with slug `heartbeat`, cron `0 */6 * * *` UTC, grace 1 h
+- [ ] Playbook: `heartbeat.service` + `heartbeat.timer` (`OnCalendar=00/6:00`,
+      `Persistent=true` so a missed ping fires right after boot → quick "up"
+      push) that curls `https://hc-ping.com/<ping_key>/heartbeat`, reusing
+      `healthchecks_ping_key`
+
 ## Roadmap
 
 ### 1. Restic + Backblaze B2 — integrity checks
@@ -169,7 +187,11 @@ Tasks:
 - Self-hosted push notification server
 - Used by Uptime Kuma, restic, Healthchecks, Watchtower etc
 - [ ] Playbook: deploy Ntfy container
-- [ ] Wire up Uptime Kuma + restic alerts to Ntfy
+- [ ] Wire up Uptime Kuma + restic alerts to Ntfy (restic already alerts via
+      healthchecks.io → ntfy.sh)
+- Self-hosting on *this* server is fine for app/service notifications, but
+  server-down and backup alerts must keep going to ntfy.sh — a local ntfy dies
+  with the server it's supposed to report on
 
 ### 7. Umami — website analytics
 
@@ -271,8 +293,10 @@ Tasks:
 
 - Pings via Ntfy if a scheduled job (e.g. restic backup) doesn't check in
 - Essential companion to restic
-- [ ] Playbook: deploy Healthchecks
-- [ ] Wire up restic backup timer to Healthchecks
+- Currently using hosted healthchecks.io (free tier) → ntfy.sh. Keep it off-box:
+  a self-hosted instance on this server can't alert when the server itself is down
+- [ ] Playbook: deploy Healthchecks (only if moved to a *different* host)
+- [x] Wire up restic backup + check timers to Healthchecks
 
 ### 18. GitHub Actions CI pipeline
 

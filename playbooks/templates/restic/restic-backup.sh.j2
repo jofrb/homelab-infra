@@ -7,6 +7,13 @@ source "$ENV_FILE"
 
 export B2_ACCOUNT_ID B2_ACCOUNT_KEY RESTIC_REPOSITORY RESTIC_PASSWORD
 
+# Report start and exit code to healthchecks.io; it alerts on non-zero exit,
+# on a run that never finishes, and on a run that never starts. Ping failures
+# must not fail the backup itself.
+HC_URL="https://hc-ping.com/{{ healthchecks_ping_key }}/restic-backup"
+curl -fsS -m 10 --retry 3 -o /dev/null "$HC_URL/start" || true
+trap 'curl -fsS -m 10 --retry 3 -o /dev/null "$HC_URL/$?" || true' EXIT
+
 # Initialise the repository if it doesn't exist yet.
 if ! restic snapshots --no-lock &>/dev/null; then
   echo "Initialising restic repository..."
