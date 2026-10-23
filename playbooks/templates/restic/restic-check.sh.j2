@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ENV_FILE=/etc/restic/b2.env
+STATE_FILE=/var/lib/restic-check/next-subset
+PARTS=6
+# shellcheck source=/dev/null
+source "$ENV_FILE"
+
+export B2_ACCOUNT_ID B2_ACCOUNT_KEY RESTIC_REPOSITORY RESTIC_PASSWORD
+
+# Cycle n through 1..PARTS so each run verifies a different, non-overlapping
+# 1/PARTS slice of the repo; the whole repo is covered every PARTS runs.
+n=$(cat "$STATE_FILE" 2>/dev/null || echo 1)
+if ! [[ "$n" =~ ^[0-9]+$ ]] || (( n < 1 || n > PARTS )); then
+  n=1
+fi
+
+echo "Checking subset ${n}/${PARTS}..."
+restic check --read-data-subset="${n}/${PARTS}"
+
+# Only advance on success, so a failed run is retried on the same slice.
+echo $(( n % PARTS + 1 )) > "$STATE_FILE"

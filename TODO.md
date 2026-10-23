@@ -127,7 +127,7 @@ worked for a ~2TB repo):
   Object Lock, currently disabled/accepted).
 
 Tasks:
-- [ ] Playbook: monthly `restic check --read-data-subset=n/6` timer (cycling `n`
+- [x] Playbook: monthly `restic check --read-data-subset=n/6` timer (cycling `n`
       1→6, restarting every 6 months) to catch B2-side repo corruption before we
       need a restore, not during one — this is a *different* failure mode than ZFS
       scrub (verifies B2's copy, not the local disk)

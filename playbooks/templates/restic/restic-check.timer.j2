@@ -1,0 +1,12 @@
+[Unit]
+Description=Monthly restic repository integrity check
+
+[Timer]
+# 1st of each month, 04:00 — after the 03:00 backup window. Each run reads
+# 1/6 of the repo, so the full repo is verified every 6 months.
+OnCalendar=*-*-01 04:00:00
+RandomizedDelaySec=1800
+Persistent=true
+
+[Install]
+WantedBy=timers.target
