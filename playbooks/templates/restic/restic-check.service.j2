@@ -2,6 +2,8 @@
 Description=Restic repository integrity check (1/6 of B2 data)
 After=network-online.target
 Wants=network-online.target
+# If the backup is still running when the check is triggered, queue behind it.
+After=restic-backup.service
 
 [Service]
 Type=oneshot

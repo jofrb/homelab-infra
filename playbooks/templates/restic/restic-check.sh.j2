@@ -17,7 +17,9 @@ if ! [[ "$n" =~ ^[0-9]+$ ]] || (( n < 1 || n > PARTS )); then
 fi
 
 echo "Checking subset ${n}/${PARTS}..."
-restic check --read-data-subset="${n}/${PARTS}"
+# check needs an exclusive lock; wait out a still-running backup/prune instead
+# of failing and silently skipping this month's slice.
+restic check --retry-lock 2h --read-data-subset="${n}/${PARTS}"
 
 # Only advance on success, so a failed run is retried on the same slice.
 echo $(( n % PARTS + 1 )) > "$STATE_FILE"
