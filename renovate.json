@@ -19,6 +19,13 @@
       "enabled": false
     },
     {
+      "description": "ansible 10 / ansible-core 2.17 supports controller Python <=3.12 — only allow digest/patch bumps of the base image, move Python minors by hand together with ansible",
+      "matchDatasources": ["docker"],
+      "matchDepNames": ["python"],
+      "matchUpdateTypes": ["major", "minor"],
+      "enabled": false
+    },
+    {
       "description": "ansible major bumps change the bundled collection set — manual review via the dependency dashboard",
       "matchDepNames": ["ansible"],
       "matchUpdateTypes": ["major"],
