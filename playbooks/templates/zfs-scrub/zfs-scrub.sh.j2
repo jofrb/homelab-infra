@@ -1,0 +1,116 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+POOL={{ zfs_pool_name }}
+ENV_FILE=/etc/restic/b2.env
+# Scrub -> repair -> re-scrub passes. A repaired file can stay listed in the
+# error log until the next scrub finishes, so allow a couple of confirmations.
+MAX_PASSES=3
+# shellcheck source=/dev/null
+source "$ENV_FILE"
+
+export B2_ACCOUNT_ID B2_ACCOUNT_KEY RESTIC_REPOSITORY RESTIC_PASSWORD
+
+# Report start and exit code to healthchecks.io (see restic-backup).
+# Exit codes: 0 = clean, 1 = failure, 2 = files were corrupt but are repaired.
+HC_URL="https://hc-ping.com/{{ healthchecks_ping_key }}/zfs-scrub"
+curl -fsS -m 10 --retry 3 -o /dev/null "$HC_URL/start" || true
+trap 'curl -fsS -m 10 --retry 3 -o /dev/null "$HC_URL/$?" || true' EXIT
+
+scrub_and_wait() {
+  # zpool scrub refuses to start while one is running; join it instead.
+  local status
+  status=$(zpool status "$POOL")
+  if ! grep -q 'scrub in progress' <<<"$status"; then
+    zpool scrub "$POOL"
+  fi
+  zpool wait -t scrub "$POOL"
+}
+
+# Paths from the "Permanent errors" section of `zpool status -v`, one per line.
+# Entries ZFS can't resolve to a path look like "data/photos:<0x1234>".
+damaged_files() {
+  zpool status -v "$POOL" | awk '
+    /^errors: Permanent errors have been detected/ { on = 1; next }
+    on && NF { sub(/^[ \t]+/, ""); print }
+  '
+}
+
+# Restore one file from the latest restic snapshot. Restore into a sibling temp
+# dir and rename over the original: restoring in place would read-modify-write
+# the corrupt records and fail with EIO.
+restore_file() {
+  local path=$1 tmp pattern
+  # Escape restic's glob characters so the path matches literally.
+  pattern=$(printf '%s' "$path" | sed -e 's/[][*?\\]/\\&/g')
+  tmp=$(mktemp -d "$(dirname "$path")/.zfs-repair.XXXXXX") || return 1
+  if restic restore latest --retry-lock 2h --tag photos --target "$tmp" --include "$pattern" \
+      && [[ -f "${tmp}${path}" ]] \
+      && mv -f "${tmp}${path}" "$path"; then
+    rm -rf "$tmp"
+  else
+    rm -rf "$tmp"
+    return 1
+  fi
+}
+
+declare -A restored=()
+repairs=0
+pass=1
+while :; do
+  echo "Pass ${pass}/${MAX_PASSES}: scrubbing ${POOL}..."
+  scrub_and_wait
+
+  found=0
+  failed=0
+  while IFS= read -r entry; do
+    [[ -n "$entry" ]] || continue
+    found=1
+    if [[ "$entry" != /* ]]; then
+      echo "ERROR: cannot repair by path: ${entry}" >&2
+      failed=1
+    elif [[ -n "${restored[$entry]:-}" ]]; then
+      echo "Still listed after restore, waiting for the next scrub to confirm: ${entry}"
+    else
+      echo "Corrupt file: ${entry}"
+      if restore_file "$entry"; then
+        restored[$entry]=1
+        repairs=$(( repairs + 1 ))
+      else
+        echo "ERROR: restore failed: ${entry}" >&2
+        failed=1
+      fi
+    fi
+  done < <(damaged_files)
+
+  (( found )) || break
+  if (( failed )); then
+    zpool status -v "$POOL" >&2
+    exit 1
+  fi
+  if (( pass >= MAX_PASSES )); then
+    echo "ERROR: errors remain after ${MAX_PASSES} passes" >&2
+    zpool status -v "$POOL" >&2
+    exit 1
+  fi
+  pass=$(( pass + 1 ))
+done
+
+# Repaired errors leave the pool's error counters non-zero, which would keep
+# `zpool status -x` unhealthy (and this job red) every week from now on.
+if (( repairs )); then
+  zpool clear "$POOL"
+fi
+
+status=$(zpool status -x "$POOL")
+if ! grep -q 'is healthy' <<<"$status"; then
+  echo "ERROR: pool not healthy after scrub" >&2
+  zpool status -v "$POOL" >&2
+  exit 1
+fi
+
+if (( repairs )); then
+  echo "Repaired ${repairs} corrupt file(s) from restic; the disk is rotting, investigate." >&2
+  exit 2
+fi
+echo "Scrub clean."

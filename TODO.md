@@ -28,6 +28,8 @@ When picking up work, scan the **In progress** and **Next up** sections.
 - [x] Immich deployed and reachable at http://192.168.88.6:2283
 - [x] Restic + Backblaze B2 backup for `/data/photos`, restore verified end-to-end
       (97.6 GiB restored to `/data/restic-restore-test`, `diff` against live data clean)
+- [x] Server-down heartbeat: `heartbeat.timer` pings healthchecks.io every 10 min,
+      which alerts via ntfy.sh when pings stop (`playbooks/heartbeat.yml`)
 
 ## In progress
 
@@ -35,23 +37,7 @@ _(nothing yet — pick from Next up)_
 
 ## Next up
 
-### Server-down alert (heartbeat)
-
-Get a push via ntfy if the server is off / unreachable. The server can't report
-its own death, so this is a dead man's switch: a systemd timer pings healthchecks.io
-every 10 min, and healthchecks.io alerts via ntfy.sh when pings stop. Both must
-stay off-box (see items 6 and 17). Also fires if home internet is down — fine,
-the server is unreachable either way.
-
-Why this is next: the server was off **2026-10-04 08:02 → 2026-10-18 11:44 UTC**
-and nobody noticed — two weeks with no backups and a skipped scrub (see item 1).
-
-- Detection delay is at most ~30 min (10 min period + 20 min grace).
-- [ ] healthchecks.io: check with slug `server-heartbeat`, period 10 minutes, grace 20 minutes
-- [x] Playbook `playbooks/heartbeat.yml`: `heartbeat.service` + `heartbeat.timer`
-      (`OnCalendar=*:0/10`, `Persistent=true` so a missed ping fires right after
-      boot → quick "up" push) curling `https://hc-ping.com/<ping_key>/server-heartbeat`,
-      reusing `healthchecks_ping_key`
+- Roadmap item 1: ZFS scrub → restic repair loop (in review), then ZED → ntfy
 
 ## Roadmap
 
@@ -170,9 +156,8 @@ Tasks:
       scrub (verifies B2's copy, not the local disk)
 - [x] Find out why the 2026-10-11 scrub was skipped — server was off 10-04 → 10-18
       (see "Current state" above)
-- [ ] If that shutdown wasn't deliberate, check how the boot ended:
-      `journalctl -b 254b44d759b64d91969e3ac8ef69da9e -n 30 --no-pager`
-- [ ] Playbook: weekly `zpool scrub data` + parse `zpool status -v` + targeted
+- [x] Check how that boot ended — someone pressed the power button, not a crash
+- [x] Playbook: weekly `zpool scrub data` + parse `zpool status -v` + targeted
       restic restore for any flagged files (the detect→identify→repair loop above).
       systemd timer with `Persistent=true` so a missed run catches up after boot;
       ping healthchecks.io check `zfs-scrub` (cron weekly, UTC)

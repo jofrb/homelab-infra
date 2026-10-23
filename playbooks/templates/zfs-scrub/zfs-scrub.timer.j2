@@ -1,0 +1,13 @@
+[Unit]
+Description=Weekly ZFS scrub
+
+[Timer]
+# Weekly: OpenZFS guidance for consumer-grade disks. Sunday 01:30, ahead of the
+# 03:00 restic backup. Persistent=true catches up a run missed while the server
+# was off, which the stock cron scrub never did.
+OnCalendar=Sun *-*-* 01:30:00
+RandomizedDelaySec=600
+Persistent=true
+
+[Install]
+WantedBy=timers.target
