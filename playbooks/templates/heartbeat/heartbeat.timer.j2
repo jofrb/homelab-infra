@@ -1,0 +1,12 @@
+[Unit]
+Description=Heartbeat ping to healthchecks.io every 10 minutes
+
+[Timer]
+# healthchecks.io expects a ping every 10 min with 20 min grace, so a dead
+# server alerts within ~30 min. Persistent=true fires a missed ping right
+# after boot, which clears the alert with a quick "up" push.
+OnCalendar=*:0/10
+Persistent=true
+
+[Install]
+WantedBy=timers.target

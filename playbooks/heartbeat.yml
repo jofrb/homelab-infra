@@ -1,0 +1,59 @@
+---
+# Dead man's switch: ping healthchecks.io every 10 minutes. healthchecks.io
+# alerts (via ntfy.sh) when pings stop, i.e. the server is off or unreachable.
+# Must stay off-box — the server can't report its own death.
+#
+# Prerequisites:
+#   vault.yml must contain:
+#     healthchecks_ping_key:   <healthchecks.io project ping key>
+#
+#   healthchecks.io must have a check with slug "server-heartbeat" in that project
+#   (period 10 minutes, grace 20 minutes), otherwise pings 404 and no alerts fire.
+#
+# Run:
+#   ansible-playbook playbooks/heartbeat.yml --ask-vault-pass
+
+- name: Set up server-down heartbeat to healthchecks.io
+  hosts: homelab
+  become: true
+
+  tasks:
+    - name: Install curl
+      ansible.builtin.apt:
+        name: curl
+        state: present
+        update_cache: true
+
+    - name: Deploy heartbeat systemd service
+      ansible.builtin.template:
+        src: "{{ playbook_dir }}/templates/heartbeat/heartbeat.service.j2"
+        dest: /etc/systemd/system/heartbeat.service
+        owner: root
+        group: root
+        mode: "0600"
+      diff: false  # the unit contains the ping key
+      notify: Reload systemd
+
+    - name: Deploy heartbeat systemd timer
+      ansible.builtin.template:
+        src: "{{ playbook_dir }}/templates/heartbeat/heartbeat.timer.j2"
+        dest: /etc/systemd/system/heartbeat.timer
+        owner: root
+        group: root
+        mode: "0644"
+      notify: Reload systemd
+
+    - name: Enable and start heartbeat timer
+      ansible.builtin.systemd:
+        name: heartbeat.timer
+        enabled: true
+        state: started
+        daemon_reload: true
+      # In --check the unit files aren't written yet on first deploy, so the
+      # timer doesn't exist and this would fail.
+      ignore_errors: "{{ ansible_check_mode }}"
+
+  handlers:
+    - name: Reload systemd
+      ansible.builtin.systemd:
+        daemon_reload: true

@@ -39,20 +39,19 @@ _(nothing yet — pick from Next up)_
 
 Get a push via ntfy if the server is off / unreachable. The server can't report
 its own death, so this is a dead man's switch: a systemd timer pings healthchecks.io
-4× a day, and healthchecks.io alerts via ntfy.sh when a ping is missed. Both must
+every 10 min, and healthchecks.io alerts via ntfy.sh when pings stop. Both must
 stay off-box (see items 6 and 17). Also fires if home internet is down — fine,
 the server is unreachable either way.
 
 Why this is next: the server was off **2026-10-04 08:02 → 2026-10-18 11:44 UTC**
 and nobody noticed — two weeks with no backups and a skipped scrub (see item 1).
 
-- Detection delay is up to ~7 h (6 h period + grace). Pinging more often (e.g.
-  every 15 min) costs nothing extra if faster alerts are wanted later.
-- [ ] healthchecks.io: check with slug `heartbeat`, cron `0 */6 * * *` UTC, grace 1 h
-- [ ] Playbook: `heartbeat.service` + `heartbeat.timer` (`OnCalendar=00/6:00`,
-      `Persistent=true` so a missed ping fires right after boot → quick "up"
-      push) that curls `https://hc-ping.com/<ping_key>/heartbeat`, reusing
-      `healthchecks_ping_key`
+- Detection delay is at most ~30 min (10 min period + 20 min grace).
+- [ ] healthchecks.io: check with slug `server-heartbeat`, period 10 minutes, grace 20 minutes
+- [x] Playbook `playbooks/heartbeat.yml`: `heartbeat.service` + `heartbeat.timer`
+      (`OnCalendar=*:0/10`, `Persistent=true` so a missed ping fires right after
+      boot → quick "up" push) curling `https://hc-ping.com/<ping_key>/server-heartbeat`,
+      reusing `healthchecks_ping_key`
 
 ## Roadmap
 
