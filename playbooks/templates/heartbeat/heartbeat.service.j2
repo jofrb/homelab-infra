@@ -1,0 +1,11 @@
+[Unit]
+Description=Ping healthchecks.io heartbeat
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+# A failed ping (e.g. home internet down) is just a missed beat; healthchecks.io
+# does the alerting. The ping key is in the URL, hence the 0600 unit file.
+ExecStart=/usr/bin/curl -fsS -m 10 --retry 3 -o /dev/null https://hc-ping.com/{{ healthchecks_ping_key }}/server-heartbeat
+SyslogIdentifier=heartbeat
