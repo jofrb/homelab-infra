@@ -1,0 +1,73 @@
+---
+# Weekly `zpool scrub` that repairs files ZFS flags as corrupt from restic/B2.
+#
+# The pool is a single disk, so ZFS can detect bit rot but not self-heal; the
+# restic repo is the second copy. Flow: scrub, read the damaged paths from
+# `zpool status -v`, restore each from the latest restic snapshot, re-scrub to
+# confirm. Reports to healthchecks.io: exit 0 = clean, 2 = corruption found and
+# repaired, 1 = failure.
+#
+# Prerequisites:
+#   playbooks/restic.yml applied first (uses /etc/restic/b2.env and restic).
+#   vault.yml must contain:
+#     healthchecks_ping_key:   <healthchecks.io project ping key>
+#
+#   healthchecks.io must have a check with slug "zfs-scrub" in that project
+#   (cron schedule "30 1 * * 0", UTC, grace ~1 day so a run caught up after a
+#   boot doesn't alert), otherwise pings 404 and no alerts fire.
+#
+# Run:
+#   ansible-playbook playbooks/zfs-scrub.yml --ask-vault-pass
+
+- name: Set up weekly ZFS scrub with restic repair
+  hosts: homelab
+  become: true
+
+  tasks:
+    - name: Install curl
+      ansible.builtin.apt:
+        name: curl
+        state: present
+        update_cache: true
+
+    - name: Deploy zfs-scrub script
+      ansible.builtin.template:
+        src: "{{ playbook_dir }}/templates/zfs-scrub/zfs-scrub.sh.j2"
+        dest: /usr/local/bin/zfs-scrub
+        owner: root
+        group: root
+        mode: "0750"
+      diff: false  # the script contains the ping key
+
+    - name: Deploy zfs-scrub systemd service
+      ansible.builtin.template:
+        src: "{{ playbook_dir }}/templates/zfs-scrub/zfs-scrub.service.j2"
+        dest: /etc/systemd/system/zfs-scrub.service
+        owner: root
+        group: root
+        mode: "0644"
+      notify: Reload systemd
+
+    - name: Deploy zfs-scrub systemd timer
+      ansible.builtin.template:
+        src: "{{ playbook_dir }}/templates/zfs-scrub/zfs-scrub.timer.j2"
+        dest: /etc/systemd/system/zfs-scrub.timer
+        owner: root
+        group: root
+        mode: "0644"
+      notify: Reload systemd
+
+    - name: Enable and start zfs-scrub timer
+      ansible.builtin.systemd:
+        name: zfs-scrub.timer
+        enabled: true
+        state: started
+        daemon_reload: true
+      # In --check the unit files aren't written yet on first deploy, so the
+      # timer doesn't exist and this would fail.
+      ignore_errors: "{{ ansible_check_mode }}"
+
+  handlers:
+    - name: Reload systemd
+      ansible.builtin.systemd:
+        daemon_reload: true

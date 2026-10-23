@@ -1,0 +1,14 @@
+[Unit]
+Description=ZFS scrub with restic repair of damaged files
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+Environment=RESTIC_CACHE_DIR=/var/cache/restic
+ExecStart=/usr/local/bin/zfs-scrub
+# Scrub time grows with the pool; never kill it mid-run.
+TimeoutStartSec=infinity
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=zfs-scrub
