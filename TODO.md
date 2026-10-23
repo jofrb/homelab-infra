@@ -43,6 +43,9 @@ its own death, so this is a dead man's switch: a systemd timer pings healthcheck
 stay off-box (see items 6 and 17). Also fires if home internet is down — fine,
 the server is unreachable either way.
 
+Why this is next: the server was off **2026-10-04 08:02 → 2026-10-18 11:44 UTC**
+and nobody noticed — two weeks with no backups and a skipped scrub (see item 1).
+
 - Detection delay is up to ~7 h (6 h period + grace). Pinging more often (e.g.
   every 15 min) costs nothing extra if faster alerts are wanted later.
 - [ ] healthchecks.io: check with slug `heartbeat`, cron `0 */6 * * *` UTC, grace 1 h
@@ -83,9 +86,26 @@ step away instead of instant. That's the loop to build:
 3. **Repair:** for each flagged path, `restic restore latest --target / --include
    <path>` — restores just that file from B2, not a full 97GB restore.
 4. Wrap 1–3 in a script + systemd service/timer (mirrors the `restic-backup` pattern:
-   script in `playbooks/templates/`, deployed + enabled via a playbook). Notify on
-   result either way once Ntfy exists (see item 6) — silently-clean is still worth
-   logging, not just failures.
+   script in `playbooks/templates/`, deployed + enabled via a playbook). Report to
+   healthchecks.io like the restic jobs do (slug `zfs-scrub`) — that alerts via
+   ntfy.sh on failure *and* on a scrub that never ran.
+
+**Current state on the server (checked 2026-10-23):**
+- Scrub only runs via Ubuntu's stock `/etc/cron.d/zfsutils-linux`: **2nd Sunday
+  of the month** at 00:24 (server is UTC). TRIM runs the 1st Sunday. No `zfs-*`
+  systemd timers exist.
+- Last scrub: **2026-09-13**, 0 errors, 32 s (~100 GiB on NVMe). The **2026-10-11
+  scrub never happened** because the server was off: `journalctl --list-boots`
+  shows boot `254b44d7…` ending 2026-10-04 08:02 and the next boot starting
+  2026-10-18 11:44. Cron has no catch-up for missed runs (unlike a systemd timer
+  with `Persistent=true`), so the scrub was simply lost.
+- `zpool history data` also has **no June scrub** (2026-06-14). Boot history only
+  goes back to 2026-06-17, so the cause can't be confirmed, but it fits the same
+  pattern.
+- `zfs-zed` is active but has no notification target configured, so a scrub that
+  *finds* errors (or a degraded pool) alerts no one today. OpenZFS on the server
+  is **2.2.2** (`zfs-2.2.2-0ubuntu9.5`), and its `zed.rc` has no `ZED_NTFY_*`
+  settings — ZED can't push to ntfy natively.
 
 Caveat (not a blocker): this only works if a restic snapshot *older than the
 corruption event* still exists. In practice this is rarely an issue — ZFS returns an
@@ -149,8 +169,22 @@ Tasks:
       1→6, restarting every 6 months) to catch B2-side repo corruption before we
       need a restore, not during one — this is a *different* failure mode than ZFS
       scrub (verifies B2's copy, not the local disk)
+- [x] Find out why the 2026-10-11 scrub was skipped — server was off 10-04 → 10-18
+      (see "Current state" above)
+- [ ] If that shutdown wasn't deliberate, check how the boot ended:
+      `journalctl -b 254b44d759b64d91969e3ac8ef69da9e -n 30 --no-pager`
 - [ ] Playbook: weekly `zpool scrub data` + parse `zpool status -v` + targeted
-      restic restore for any flagged files (the detect→identify→repair loop above)
+      restic restore for any flagged files (the detect→identify→repair loop above).
+      systemd timer with `Persistent=true` so a missed run catches up after boot;
+      ping healthchecks.io check `zfs-scrub` (cron weekly, UTC)
+- [ ] Decide on the stock cron scrub once the timer exists: comment out only the
+      scrub line in `/etc/cron.d/zfsutils-linux` (dpkg conffile — local edit is kept
+      on upgrade) and keep the TRIM line, or leave it as a harmless extra run
+- [ ] ZED → ntfy.sh for pool faults between scrubs (degraded pool, device
+      errors). ZED 2.2.2 has no native ntfy support, so deploy a custom zedlet
+      (e.g. `/etc/zfs/zed.d/statechange-ntfy.sh`) that curls ntfy.sh with the
+      `ZEVENT_*` details. Scrub errors themselves are already covered by the
+      scrub script's exit code via healthchecks.io
 
 ### 2. AdGuard Home — DNS ad blocking + parental controls
 
