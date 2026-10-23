@@ -12,7 +12,7 @@ When picking up work, scan the **In progress** and **Next up** sections.
   (podman, zfsutils-linux, restic) stay unpinned on purpose — Ubuntu's archive only
   keeps the latest revision per release, so hardcoding a version there risks
   breaking a from-scratch reprovision later; the OS layer tracks Ubuntu's own
-  update cadence instead. Renovate (config in a follow-up PR) keeps the client-side pins
+  update cadence instead. Renovate (`renovate.json`) keeps the client-side pins
   current. Darwin-vs-Linux controller-runtime parity is a separate, deliberately
   deferred question — see item 18, it stops mattering once the self-hosted runner
   exists and real applies move there.

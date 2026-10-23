@@ -1,0 +1,28 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended"],
+  "labels": ["dependencies"],
+  "customManagers": [
+    {
+      "customType": "regex",
+      "description": "ansible pinned in the Dockerfile pip install",
+      "managerFilePatterns": ["/(^|/)Dockerfile$/"],
+      "matchStrings": ["pip install[^\\n]*?\\bansible==(?<currentValue>[0-9][^\\s\\\\]*)"],
+      "depNameTemplate": "ansible",
+      "datasourceTemplate": "pypi"
+    }
+  ],
+  "packageRules": [
+    {
+      "description": "Galaxy collections are pinned to match the bundled ansible package version; bump them by hand together with ansible, not independently",
+      "matchManagers": ["ansible-galaxy"],
+      "enabled": false
+    },
+    {
+      "description": "ansible major bumps change the bundled collection set — manual review via the dependency dashboard",
+      "matchDepNames": ["ansible"],
+      "matchUpdateTypes": ["major"],
+      "dependencyDashboardApproval": true
+    }
+  ]
+}
