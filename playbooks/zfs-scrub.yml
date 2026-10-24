@@ -67,6 +67,18 @@
       # timer doesn't exist and this would fail.
       ignore_errors: "{{ ansible_check_mode }}"
 
+    # Ubuntu's stock monthly scrub would otherwise run alongside the timer
+    # (2nd Sunday, and with no catch-up after downtime). Only the scrub line is
+    # commented out; the TRIM line stays. It's a dpkg conffile, so this local
+    # edit survives upgrades. Already-commented lines don't match, so re-runs
+    # are no-ops.
+    - name: Disable stock cron scrub (replaced by zfs-scrub.timer)
+      ansible.builtin.lineinfile:
+        path: /etc/cron.d/zfsutils-linux
+        regexp: '^([0-9*].*/usr/lib/zfs-linux/scrub.*)$'
+        line: '# \1'
+        backrefs: true
+
   handlers:
     - name: Reload systemd
       ansible.builtin.systemd:

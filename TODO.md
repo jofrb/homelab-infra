@@ -37,7 +37,7 @@ _(nothing yet — pick from Next up)_
 
 ## Next up
 
-- Roadmap item 1: ZFS scrub → restic repair loop (in review), then ZED → ntfy
+- Roadmap item 1: ZED → ntfy for pool faults between scrubs
 
 ## Roadmap
 
@@ -161,7 +161,7 @@ Tasks:
       restic restore for any flagged files (the detect→identify→repair loop above).
       systemd timer with `Persistent=true` so a missed run catches up after boot;
       ping healthchecks.io check `zfs-scrub` (cron weekly, UTC)
-- [ ] Decide on the stock cron scrub once the timer exists: comment out only the
+- [x] Decide on the stock cron scrub once the timer exists: comment out only the
       scrub line in `/etc/cron.d/zfsutils-linux` (dpkg conffile — local edit is kept
       on upgrade) and keep the TRIM line, or leave it as a harmless extra run
 - [ ] ZED → ntfy.sh for pool faults between scrubs (degraded pool, device
