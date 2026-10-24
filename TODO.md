@@ -37,7 +37,7 @@ _(nothing yet — pick from Next up)_
 
 ## Next up
 
-- Roadmap item 1: ZED → ntfy for pool faults between scrubs
+_(nothing yet — pick from the Roadmap)_
 
 ## Roadmap
 
@@ -164,7 +164,7 @@ Tasks:
 - [x] Decide on the stock cron scrub once the timer exists: comment out only the
       scrub line in `/etc/cron.d/zfsutils-linux` (dpkg conffile — local edit is kept
       on upgrade) and keep the TRIM line, or leave it as a harmless extra run
-- [ ] ZED → ntfy.sh for pool faults between scrubs (degraded pool, device
+- [x] ZED → ntfy.sh for pool faults between scrubs (degraded pool, device
       errors). ZED 2.2.2 has no native ntfy support, so deploy a custom zedlet
       (e.g. `/etc/zfs/zed.d/statechange-ntfy.sh`) that curls ntfy.sh with the
       `ZEVENT_*` details. Scrub errors themselves are already covered by the

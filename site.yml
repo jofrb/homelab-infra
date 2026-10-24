@@ -13,3 +13,5 @@
   import_playbook: playbooks/heartbeat.yml
 - name: Set up weekly ZFS scrub with restic repair
   import_playbook: playbooks/zfs-scrub.yml
+- name: Set up ZED notifications to ntfy.sh
+  import_playbook: playbooks/zfs-zed.yml
