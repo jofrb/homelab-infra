@@ -1,0 +1,40 @@
+#!/bin/sh
+# ZED zedlet: push pool/device faults to ntfy.sh. ZED 2.2 has no native ntfy
+# support. Named all-* so it sees every event class; we filter below.
+# ntfy.sh (not a local ntfy) on purpose: a local one dies with this server.
+#
+# Env vars (ZEVENT_*) are set by zed. Scrub results are reported by the
+# zfs-scrub job via healthchecks.io, not here.
+
+case "${ZEVENT_CLASS:-}" in
+  sysevent.fs.zfs.statechange)
+    # Skip ONLINE: avoids noise on boot/import and normal recovery.
+    case "${ZEVENT_VDEV_STATE_STR:-}" in
+      FAULTED|DEGRADED|REMOVED|UNAVAIL) ;;
+      *) exit 0 ;;
+    esac
+    ;;
+  ereport.fs.zfs.io|ereport.fs.zfs.io_failure|ereport.fs.zfs.checksum|ereport.fs.zfs.data|ereport.fs.zfs.probe_failure) ;;
+  *) exit 0 ;;
+esac
+
+# One bad scrub can emit thousands of checksum/io events; send at most one push
+# per class/pool/state every 15 minutes.
+stamp="/run/zed-ntfy.$(printf '%s-%s-%s' "${ZEVENT_SUBCLASS:-x}" "${ZEVENT_POOL:-x}" "${ZEVENT_VDEV_STATE_STR:-x}" | tr -c 'A-Za-z0-9._-' '_')"
+if [ -n "$(find "$stamp" -mmin -15 2>/dev/null)" ]; then
+  exit 0
+fi
+touch "$stamp"
+
+msg="class: ${ZEVENT_CLASS}
+pool: ${ZEVENT_POOL:-unknown}
+vdev: ${ZEVENT_VDEV_PATH:-n/a}
+state: ${ZEVENT_VDEV_STATE_STR:-n/a}
+event id: ${ZEVENT_EID:-n/a}"
+
+curl -fsS -m 10 --retry 3 -o /dev/null \
+  -H "Title: ZFS fault on $(hostname): ${ZEVENT_POOL:-unknown}" \
+  -H "Priority: high" \
+  -H "Tags: warning" \
+  -d "$msg" \
+  "https://ntfy.sh/{{ ntfy_topic }}" || exit 0

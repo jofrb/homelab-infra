@@ -1,0 +1,53 @@
+---
+# Push ZFS pool/device faults between scrubs (degraded pool, device errors,
+# I/O or checksum errors) to ntfy.sh via a custom ZED zedlet.
+#
+# Scrub results are not covered here; the zfs-scrub job reports those through
+# healthchecks.io. The zedlet is a real file (not a symlink into
+# /usr/lib/zfs-linux/zed.d), so package upgrades leave it alone.
+#
+# Prerequisites:
+#   vault.yml must contain:
+#     ntfy_topic:   <ntfy.sh topic>   # acts as a password; keep it in the vault
+#
+# Test without a real fault (run on the server as root):
+#   ZEVENT_CLASS=sysevent.fs.zfs.statechange ZEVENT_SUBCLASS=statechange \
+#   ZEVENT_POOL=data ZEVENT_VDEV_PATH=/dev/test ZEVENT_VDEV_STATE_STR=DEGRADED \
+#   ZEVENT_EID=0 /etc/zfs/zed.d/all-ntfy.sh
+#
+# Run:
+#   ansible-playbook playbooks/zfs-zed.yml --ask-vault-pass
+
+- name: Set up ZED notifications to ntfy.sh
+  hosts: homelab
+  become: true
+
+  tasks:
+    - name: Install curl
+      ansible.builtin.apt:
+        name: curl
+        state: present
+        update_cache: true
+
+    - name: Deploy ZED ntfy zedlet
+      ansible.builtin.template:
+        src: "{{ playbook_dir }}/templates/zed/all-ntfy.sh.j2"
+        dest: /etc/zfs/zed.d/all-ntfy.sh
+        owner: root
+        group: root
+        mode: "0750"
+      diff: false  # the script contains the ntfy topic
+      notify: Restart zed
+
+    - name: Ensure zed is enabled and running
+      ansible.builtin.systemd:
+        name: zfs-zed
+        enabled: true
+        state: started
+
+  handlers:
+    # zed only scans its zedlet directory at startup/SIGHUP.
+    - name: Restart zed
+      ansible.builtin.systemd:
+        name: zfs-zed
+        state: restarted
