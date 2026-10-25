@@ -195,8 +195,10 @@ Tasks:
       verify with `dig @192.168.88.6`
 - [ ] Router: DHCP `dns-server=192.168.88.6,192.168.88.1`; router DNS upstream
       Quad9/Cloudflare (`/ip dns set servers=...`)
-- [ ] Make sure the server's own resolver doesn't depend on AdGuard (restic,
-      heartbeat and ntfy must work when it's down) once DHCP points at it
+- [x] Server's own resolver doesn't depend on AdGuard: static IP, DNS server is the
+      router (192.168.88.1), checked 2026-10-25 with `resolvectl status`. Keep the
+      router's upstream DNS independent of AdGuard, or restic, heartbeat and ntfy
+      lose DNS when it's down
 - [ ] PR: config in git — `adguard-pull` + templated config, `adguard_admin_password_hash`
       in the vault. Do after the first apply and UI setup; second apply must
       report 0 changed. Also narrow the web UI from `0.0.0.0:3000` to the LAN IP
