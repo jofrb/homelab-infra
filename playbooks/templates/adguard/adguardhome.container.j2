@@ -1,0 +1,21 @@
+[Unit]
+Description=AdGuard Home DNS
+After=network-online.target
+Wants=network-online.target
+
+[Container]
+Image=docker.io/adguard/adguardhome:{{ adguard_version }}
+ContainerName=adguardhome
+# Host networking: clients keep their real source IP (per-client rules and
+# stats) and no NAT/ufw forward rules are needed for port 53.
+Network=host
+Volume={{ adguard_app_dir }}/conf:/opt/adguardhome/conf
+Volume={{ adguard_app_dir }}/work:/opt/adguardhome/work
+Volume=/etc/localtime:/etc/localtime:ro
+
+[Service]
+Restart=always
+TimeoutStartSec=300
+
+[Install]
+WantedBy=multi-user.target

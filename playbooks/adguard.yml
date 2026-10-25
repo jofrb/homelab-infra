@@ -1,0 +1,147 @@
+---
+# Deploy AdGuard Home (network-wide DNS ad blocking) via a Podman Quadlet.
+#
+# Runs with host networking. DNS binds the server's LAN IP only: a specific IP
+# (not 0.0.0.0) keeps it clear of systemd-resolved's 127.0.0.53:53 stub and the
+# Podman bridge's aardvark-dns, so neither needs touching. The web UI stays on
+# 0.0.0.0:3000: setup mode already listens there, and AdGuard refuses to move to
+# a specific IP on the same port ("address already in use"). ufw limits it to the
+# LAN; narrow it with http.address once the config is in git.
+#
+# First-run setup (admin user, listen addresses) is done through AdGuard's own
+# install API, and only while it is still in setup mode. After that AdGuard owns
+# its AdGuardHome.yaml (it rewrites the file itself, so templating it here would
+# show "changed" and restart the service on every run): upstreams, filter lists
+# and per-client rules are managed in the web UI.
+#
+# Prerequisites:
+#   1. playbooks/podman.yml and playbooks/zfs.yml applied first.
+#   2. vault.yml must contain:
+#        adguard_admin_password:   <strong password>
+#
+# Verify (from another LAN machine):
+#   dig @192.168.88.6 example.com +short       # resolves
+#   dig @192.168.88.6 doubleclick.net +short   # blocked -> 0.0.0.0
+#
+# Only point DHCP at it (router) after the checks above pass.
+#
+# Run:
+#   ansible-playbook playbooks/adguard.yml --ask-vault-pass
+
+- name: Deploy AdGuard Home
+  hosts: homelab
+  become: true
+
+  tasks:
+    - name: Require the AdGuard admin password in the vault
+      ansible.builtin.assert:
+        that: adguard_admin_password is defined
+        fail_msg: "adguard_admin_password is missing from group_vars/homelab/vault.yml"
+        quiet: true
+
+    - name: Create AdGuard Home directories
+      ansible.builtin.file:
+        path: "{{ adguard_app_dir }}/{{ item }}"
+        state: directory
+        owner: root
+        group: root
+        mode: "0700"
+      loop:
+        - conf
+        - work
+
+    - name: Deploy AdGuard Home container Quadlet
+      ansible.builtin.template:
+        src: "{{ playbook_dir }}/templates/adguard/adguardhome.container.j2"
+        dest: /etc/containers/systemd/adguardhome.container
+        owner: root
+        group: root
+        mode: "0644"
+      notify:
+        - Reload systemd
+        - Restart AdGuard Home
+
+    # Quadlet units only exist after the generator runs, so reload before starting.
+    - name: Apply pending systemd reload/restart
+      ansible.builtin.meta: flush_handlers
+
+    - name: Enable and start AdGuard Home
+      ansible.builtin.systemd:
+        name: adguardhome.service
+        enabled: true
+        state: started
+      # In --check the Quadlet isn't generated yet on first deploy, so the
+      # unit doesn't exist and this would fail.
+      ignore_errors: "{{ ansible_check_mode }}"
+
+    - name: First-run setup and health check
+      when: not ansible_check_mode
+      block:
+        - name: Wait for the AdGuard Home web port
+          ansible.builtin.wait_for:
+            host: "{{ adguard_listen_ip }}"
+            port: "{{ adguard_web_port }}"
+            timeout: 120
+
+        # Only answers with JSON while AdGuard is in first-run setup mode; once
+        # configured the route is gone (404/403 or a login redirect).
+        - name: Check whether AdGuard Home is still in first-run setup mode
+          ansible.builtin.uri:
+            url: "http://{{ adguard_listen_ip }}:{{ adguard_web_port }}/control/install/get_addresses"
+            follow_redirects: none
+            return_content: true
+            status_code: [200, 301, 302, 307, 401, 403, 404]
+          register: adguard_install_check
+          changed_when: false
+
+        # The body is built as JSON text inside one expression so the ports stay
+        # integers; templated dict values can turn into strings, which AdGuard
+        # rejects. Errors are surfaced below instead of being hidden by no_log.
+        - name: Complete AdGuard Home first-run setup
+          ansible.builtin.uri:
+            url: "http://{{ adguard_listen_ip }}:{{ adguard_web_port }}/control/install/configure"
+            method: POST
+            body_format: json
+            body: >-
+              {{ {
+                'web': {'ip': '0.0.0.0', 'port': adguard_web_port | int},
+                'dns': {'ip': adguard_listen_ip, 'port': 53},
+                'username': adguard_admin_user,
+                'password': adguard_admin_password
+              } | to_json }}
+            return_content: true
+            status_code: [200, 400, 403, 404, 500]
+          register: adguard_setup
+          when:
+            - adguard_install_check.status == 200
+            - adguard_install_check.json is defined
+            - adguard_install_check.json.interfaces is defined
+          failed_when: false
+          changed_when: adguard_setup.status | default(-1) == 200
+          no_log: true  # the body contains the admin password
+
+        - name: Report AdGuard Home setup errors
+          ansible.builtin.fail:
+            msg: >-
+              AdGuard Home setup failed (HTTP {{ adguard_setup.status | default('n/a') }}):
+              {{ adguard_setup.content | default(adguard_setup.msg | default('no response')) }}
+          when:
+            - adguard_setup is not skipped
+            - adguard_setup.status | default(-1) != 200
+
+        - name: Wait for the AdGuard Home DNS port
+          ansible.builtin.wait_for:
+            host: "{{ adguard_listen_ip }}"
+            port: 53
+            timeout: 60
+
+  handlers:
+    - name: Reload systemd
+      ansible.builtin.systemd:
+        daemon_reload: true
+
+    - name: Restart AdGuard Home
+      ansible.builtin.systemd:
+        name: adguardhome.service
+        state: restarted
+      ignore_errors: "{{ ansible_check_mode }}"
