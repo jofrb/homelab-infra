@@ -32,13 +32,13 @@
         src: "{{ item }}"
       loop: "{{ allowed_networks }}"
 
-    - name: Allow AdGuard Home DNS from LAN
+    - name: Allow AdGuard Home DNS from LAN and WireGuard
       community.general.ufw:
         rule: allow
         port: "53"
         proto: any
         src: "{{ item }}"
-      loop: "{{ allowed_networks }}"
+      loop: "{{ adguard_allowed_networks }}"
 
     - name: Allow AdGuard Home web UI from LAN
       community.general.ufw:

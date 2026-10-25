@@ -13,6 +13,10 @@ adguard_app_dir: /data/adguard
 adguard_listen_ip: "{{ ansible_host }}"
 adguard_web_port: 3000
 adguard_admin_user: admin
+# Networks allowed to use AdGuard's DNS: the LAN plus WireGuard peers. Kept apart
+# from allowed_networks, which also opens SSH and Immich.
+wireguard_network: "10.0.0.0/24"
+adguard_allowed_networks: "{{ allowed_networks + [wireguard_network] }}"
 
 # Restic / Backblaze B2
 restic_b2_bucket: strutserver-restic-backup
