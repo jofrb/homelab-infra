@@ -32,6 +32,22 @@
         src: "{{ item }}"
       loop: "{{ allowed_networks }}"
 
+    - name: Allow AdGuard Home DNS from LAN
+      community.general.ufw:
+        rule: allow
+        port: "53"
+        proto: any
+        src: "{{ item }}"
+      loop: "{{ allowed_networks }}"
+
+    - name: Allow AdGuard Home web UI from LAN
+      community.general.ufw:
+        rule: allow
+        port: "{{ adguard_web_port }}"
+        proto: tcp
+        src: "{{ item }}"
+      loop: "{{ allowed_networks }}"
+
     - name: Allow container-to-container and container-to-host traffic (Podman)
       community.general.ufw:
         rule: allow
