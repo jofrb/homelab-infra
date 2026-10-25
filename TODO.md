@@ -191,38 +191,55 @@ Tasks:
   apply. Until then it is UI-managed (AdGuard rewrites its own YAML)
 - [x] Playbook: deploy AdGuard Home (host network on the LAN IP, first-run setup
       via the install API, ufw rules, `data/adguard` dataset)
-- [ ] Add `adguard_admin_password` to the vault, apply `playbooks/adguard.yml`,
-      verify with `dig @192.168.88.6`
-- [ ] Router: DHCP `dns-server=192.168.88.6,192.168.88.1`; router DNS upstream
-      Quad9/Cloudflare (`/ip dns set servers=...`)
-- [x] Server's own resolver doesn't depend on AdGuard: static IP, DNS server is the
-      router (192.168.88.1), checked 2026-10-25 with `resolvectl status`. Keep the
-      router's upstream DNS independent of AdGuard, or restic, heartbeat and ntfy
-      lose DNS when it's down
+- [x] Add `adguard_admin_password` to the vault, apply `playbooks/adguard.yml`,
+      verify with `dig @192.168.88.6` (2026-10-25). Upstream is Cloudflare Security
+      over DoH, set in the UI like on the router; latency is on par with the router
+- [x] Router: DHCP `dns-server=192.168.88.6,192.168.88.1` on `192.168.88.0/26`. The
+      router's own upstream (1.1.1.2 + DoH) is independent of AdGuard. Fallback to
+      the router tested by stopping AdGuard
+- [x] Server's own resolver doesn't depend on AdGuard. The server gets its address
+      from a DHCP reservation (not netplan), so its lease carries the DHCP option
+      `dns-router-only` (code 6, `0xC0A85801` = 192.168.88.1); a per-lease option
+      beats the network's `dns-server`. Checked 2026-10-25 with `resolvectl status`.
+      Keep the router's upstream DNS independent of AdGuard, or restic, heartbeat
+      and ntfy lose DNS when it's down
 - [ ] PR: config in git — `adguard-pull` + templated config, `adguard_admin_password_hash`
       in the vault. Do after the first apply and UI setup; second apply must
       report 0 changed. Also narrow the web UI from `0.0.0.0:3000` to the LAN IP
       via `http.address` (setup mode can't move to a specific IP on the same port)
-- [ ] PR: WireGuard access for own phone (replaces NextDNS) — DNS-only profile
-      (`DNS = 192.168.88.6`, `AllowedIPs = 192.168.88.6/32`). Use a separate
-      `adguard_allowed_networks` (LAN + WG subnet) for port 53, **not**
-      `allowed_networks` (that also opens SSH and Immich). The router must not NAT
-      WG→LAN, or AdGuard only sees the router IP. Run NextDNS in parallel for a
-      month before cancelling: away from home the phone has no DNS if the server or
-      home uplink is down
-- [ ] Kids' iPhones: WireGuard (DNS-only profile, On-Demand) as soft enforcement
-      so the filter also applies on cellular — iOS can't lock an always-on VPN
-      without MDM/supervision, so the kids *can* switch it off; accepted because
-      they're unlikely to look (iOS shows a VPN badge and a Settings toggle, so
-      revisit if that changes). Their router-side peers must reach only
-      192.168.88.6:53 (router forward rule), never SSH/Immich. Plus, for the
-      home-Wi-Fi fallback (verify each on a device): static leases (use the Wi-Fi
-      address shown in the
-      phone's Wi-Fi details; it can change if the network is forgotten), router
-      forward rule dropping port 53/853 from their IPs except to AdGuard, block
+- [x] ufw: DNS (53) allowed from the WireGuard network `10.0.0.0/24` via
+      `adguard_allowed_networks`, not `allowed_networks` (that also opens SSH and
+      Immich)
+- [ ] Own iPhone (replaces NextDNS): WireGuard profile with `DNS = 192.168.88.6` and
+      `AllowedIPs = 192.168.88.6/32, 192.168.88.1/32` (the router address is for the
+      pause shortcuts), On-Demand on cellular. The router must not NAT WG→LAN, or
+      AdGuard only sees the router IP. Run NextDNS in parallel for a month before
+      cancelling: away from home the phone has no DNS if the server or home uplink
+      is down
+- [ ] Pause switch (router-side, instant): firewall rules at the top of `forward`
+      drop traffic from/to addresses in the `paused` list; scripts
+      `pause-phone-1`/`resume-phone-1` (and `pause-phones`/`resume-phones`) add or
+      remove the IP and flush its connections. Run from an iPhone Shortcut ("Run
+      Script Over SSH") as the restricted router user `pause` (LAN + WG only). It
+      only covers Wi-Fi: a phone with mobile data falls back to cellular, so use
+      Screen Time Downtime for a full stop. Devices are `phone-1`/`phone-2`, no
+      names in the router, AdGuard or this repo
+- [ ] The two kids' iPhones: static leases with `address-lists=phones` and the DHCP
+      option `dns-adguard-only` (code 6, `0xC0A85806` = 192.168.88.6, same mechanism
+      as the server's `dns-router-only`), so they never see the router as DNS.
+      Identify them with a unique lookup (`identify-1.example.com` in Safari, read
+      the client in the Query Log). Use the Wi-Fi address shown in the phone's Wi-Fi
+      details; it can change if the network is forgotten. Router forward rule
+      dropping port 53/853 from their IPs except to AdGuard; block
       `mask.icloud.com` + `mask-h2.icloud.com` (makes iOS turn Private Relay off on
-      the network), per-client blocked services + schedules in the UI. Off home
-      Wi-Fi AdGuard doesn't apply: use Screen Time's web filter, and lock "Cellular
+      the network); per-client blocked services + schedules in the UI (verify each
+      on a device)
+- [ ] Kids off home Wi-Fi: WireGuard (DNS-only profile, On-Demand) as soft
+      enforcement. iOS can't lock an always-on VPN without MDM/supervision, so they
+      *can* switch it off; accepted because they're unlikely to look (iOS shows a
+      VPN badge and a Settings toggle, so revisit if that changes). Their
+      router-side peers must reach only 192.168.88.6:53 (router forward rule),
+      never SSH/Immich. Otherwise use Screen Time's web filter, and lock "Cellular
       Data Changes" if the phone should be Wi-Fi-only
 - [ ] Add `/data/adguard/conf` to the restic backup (config is not in git)
 - [ ] Renovate regex manager for `adguard_version` (Quadlet `.container.j2` files
