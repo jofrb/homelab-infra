@@ -9,3 +9,8 @@
 - After completing the work on a branch, create a PR for review.
 
 Branch naming: use short, descriptive kebab-case names prefixed by type, e.g. `feat/add-monitoring`, `fix/ansible-ssh-timeout`, `chore/update-dependencies`.
+
+## Suggesting commands
+
+- When suggesting commands that belong together, chain them with `&&` in one line instead of listing them separately, e.g. `git push && gh pr create`.
+- For PRs, suggest `gh pr create` with an explicit `--title` and `--body`, never `--fill`.
