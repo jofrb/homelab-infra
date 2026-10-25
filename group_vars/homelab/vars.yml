@@ -7,6 +7,13 @@ immich_app_dir: /data/immich
 immich_db_name: immich
 immich_db_user: immich
 
+# AdGuard Home (host networking, bound to the server's LAN IP)
+adguard_version: v0.107.79
+adguard_app_dir: /data/adguard
+adguard_listen_ip: "{{ ansible_host }}"
+adguard_web_port: 3000
+adguard_admin_user: admin
+
 # Restic / Backblaze B2
 restic_b2_bucket: strutserver-restic-backup
 restic_backup_paths:
@@ -21,3 +28,4 @@ restic_backup_paths:
 #   restic_b2_account_key:      <B2 application key>
 #   restic_repository_password: <strong passphrase, e.g. openssl rand -base64 32>
 #   healthchecks_ping_key:      <healthchecks.io project ping key (Settings → Ping key)>
+#   adguard_admin_password:     <strong password for the AdGuard Home web UI>

@@ -9,3 +9,4 @@ zfs_datasets:
   - name: data/immich
   - name: data/immich/postgres
     recordsize: "8192"
+  - name: data/adguard
