@@ -8,7 +8,7 @@ immich_db_name: immich
 immich_db_user: immich
 
 # AdGuard Home (host networking, bound to the server's LAN IP)
-adguard_version: v0.107.57
+adguard_version: v0.107.79
 adguard_app_dir: /data/adguard
 adguard_listen_ip: "{{ ansible_host }}"
 adguard_web_port: 3000
