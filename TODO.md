@@ -199,7 +199,8 @@ Tasks:
       heartbeat and ntfy must work when it's down) once DHCP points at it
 - [ ] PR: config in git — `adguard-pull` + templated config, `adguard_admin_password_hash`
       in the vault. Do after the first apply and UI setup; second apply must
-      report 0 changed
+      report 0 changed. Also narrow the web UI from `0.0.0.0:3000` to the LAN IP
+      via `http.address` (setup mode can't move to a specific IP on the same port)
 - [ ] PR: WireGuard access for own phone (replaces NextDNS) — DNS-only profile
       (`DNS = 192.168.88.6`, `AllowedIPs = 192.168.88.6/32`). Use a separate
       `adguard_allowed_networks` (LAN + WG subnet) for port 53, **not**
