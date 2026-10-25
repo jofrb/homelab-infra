@@ -172,9 +172,58 @@ Tasks:
 
 ### 2. AdGuard Home — DNS ad blocking + parental controls
 
-- Run directly on router (no server dependency, survives reboots)
+- Runs on the **server** as a Podman Quadlet (`playbooks/adguard.yml`), not the
+  router: the MikroTik hEX S is MMIPS, which RouterOS's container package doesn't
+  support (check: `/system resource print` → `architecture-name`)
 - Per-device scheduling, category blocking, clean dashboard
-- [ ] Install and configure AdGuard Home on router
+- Clients get the server as DNS **directly from DHCP**. Going via the router's DNS
+  forwarder would make every query look like it came from the router, so per-device
+  rules and stats stop working
+- Trade-off: DNS depends on server uptime (it was off 2026-10-04 → 10-18). Regular
+  devices get `[server, router]` as DNS so they fail open (some OSes query the
+  secondary anyway and bypass the filter); kids' devices get the server only
+  (fail closed)
+- Config goes in git, but only after first-run: the repo file is `AdGuardHome.yaml`
+  exactly as AdGuard wrote it (byte-stable, so re-applying is a no-op). `make
+  adguard-pull` fetches it from the server (admin hash swapped for a vault
+  variable), `make check` shows UI drift as a diff, `make run` writes the repo
+  version (stop → write → start), so temporary UI changes last until the next
+  apply. Until then it is UI-managed (AdGuard rewrites its own YAML)
+- [x] Playbook: deploy AdGuard Home (host network on the LAN IP, first-run setup
+      via the install API, ufw rules, `data/adguard` dataset)
+- [ ] Add `adguard_admin_password` to the vault, apply `playbooks/adguard.yml`,
+      verify with `dig @192.168.88.6`
+- [ ] Router: DHCP `dns-server=192.168.88.6,192.168.88.1`; router DNS upstream
+      Quad9/Cloudflare (`/ip dns set servers=...`)
+- [ ] Make sure the server's own resolver doesn't depend on AdGuard (restic,
+      heartbeat and ntfy must work when it's down) once DHCP points at it
+- [ ] PR: config in git — `adguard-pull` + templated config, `adguard_admin_password_hash`
+      in the vault. Do after the first apply and UI setup; second apply must
+      report 0 changed
+- [ ] PR: WireGuard access for own phone (replaces NextDNS) — DNS-only profile
+      (`DNS = 192.168.88.6`, `AllowedIPs = 192.168.88.6/32`). Use a separate
+      `adguard_allowed_networks` (LAN + WG subnet) for port 53, **not**
+      `allowed_networks` (that also opens SSH and Immich). The router must not NAT
+      WG→LAN, or AdGuard only sees the router IP. Run NextDNS in parallel for a
+      month before cancelling: away from home the phone has no DNS if the server or
+      home uplink is down
+- [ ] Kids' iPhones: WireGuard (DNS-only profile, On-Demand) as soft enforcement
+      so the filter also applies on cellular — iOS can't lock an always-on VPN
+      without MDM/supervision, so the kids *can* switch it off; accepted because
+      they're unlikely to look (iOS shows a VPN badge and a Settings toggle, so
+      revisit if that changes). Their router-side peers must reach only
+      192.168.88.6:53 (router forward rule), never SSH/Immich. Plus, for the
+      home-Wi-Fi fallback (verify each on a device): static leases (use the Wi-Fi
+      address shown in the
+      phone's Wi-Fi details; it can change if the network is forgotten), router
+      forward rule dropping port 53/853 from their IPs except to AdGuard, block
+      `mask.icloud.com` + `mask-h2.icloud.com` (makes iOS turn Private Relay off on
+      the network), per-client blocked services + schedules in the UI. Off home
+      Wi-Fi AdGuard doesn't apply: use Screen Time's web filter, and lock "Cellular
+      Data Changes" if the phone should be Wi-Fi-only
+- [ ] Add `/data/adguard/conf` to the restic backup (config is not in git)
+- [ ] Renovate regex manager for `adguard_version` (Quadlet `.container.j2` files
+      aren't picked up by default)
 
 ### 3. Traefik — reverse proxy
 
