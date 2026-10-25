@@ -13,3 +13,4 @@ Branch naming: use short, descriptive kebab-case names prefixed by type, e.g. `f
 ## Suggesting commands
 
 - When suggesting commands that belong together, chain them with `&&` in one line instead of listing them separately, e.g. `git push && gh pr create`.
+- For PRs, suggest `gh pr create` with an explicit `--title` and `--body`, never `--fill`.
