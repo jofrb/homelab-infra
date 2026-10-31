@@ -241,6 +241,11 @@ Tasks:
       router-side peers must reach only 192.168.88.6:53 (router forward rule),
       never SSH/Immich. Otherwise use Screen Time's web filter, and lock "Cellular
       Data Changes" if the phone should be Wi-Fi-only
+- [ ] Once the config has matured (phones, pause switch and per-client rules settled
+      in the UI), run `make adguard-pull` (needs the "PR: config in git" item above)
+      and commit `AdGuardHome.yaml`. Pulling earlier only captures churn
+- [ ] Reminder: progress AdGuard maturity soon. Last touched 2026-10-25; the phone,
+      pause switch and kids' items above are what decide when the config is ready
 - [ ] Add `/data/adguard/conf` to the restic backup (config is not in git)
 - [ ] Renovate regex manager for `adguard_version` (Quadlet `.container.j2` files
       aren't picked up by default)
