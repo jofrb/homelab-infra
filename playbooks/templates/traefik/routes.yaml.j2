@@ -19,9 +19,20 @@ http:
           - main: "{{ traefik_domain }}"
             sans:
               - "*.{{ traefik_domain }}"
+    adguard:
+      rule: "Host(`adguard.{{ traefik_domain }}`)"
+      entryPoints:
+        - websecure
+      service: adguard
+      tls:
+        certResolver: letsencrypt
 
   services:
     immich:
       loadBalancer:
         servers:
           - url: "http://127.0.0.1:2283"
+    adguard:
+      loadBalancer:
+        servers:
+          - url: "http://127.0.0.1:3000"

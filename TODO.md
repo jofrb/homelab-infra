@@ -274,6 +274,7 @@ Tasks:
       again, safe now that its answer for `*.froeb.se` matches AdGuard's. Clients
       that query the router first skip AdGuard filtering. Clients pick up the
       change on lease renewal (Wi-Fi off/on)
+- [x] AdGuard web UI behind Traefik at `adguard.froeb.se` (LAN and WireGuard)
 - [ ] Migrate Immich to sit behind Traefik (close the direct `:2283` publish)
 
 ### 4. Cloudflare Tunnel — external access
