@@ -275,6 +275,10 @@ Tasks:
       that query the router first skip AdGuard filtering. Clients pick up the
       change on lease renewal (Wi-Fi off/on)
 - [x] AdGuard web UI behind Traefik at `adguard.froeb.se` (LAN and WireGuard)
+- [ ] Manage Cloudflare DNS through Ansible (`community.general.cloudflare_dns`,
+      `hosts: localhost`, token `traefik_cf_dns_api_token`). Wildcard `*` → server
+      IP, DNS only, from `ansible_host`. Today it's set by hand in the dashboard.
+      Also delete the leftover Loopia-era records with `state: absent`
 - [ ] Migrate Immich to sit behind Traefik (close the direct `:2283` publish)
 
 ### 4. Cloudflare Tunnel — external access
