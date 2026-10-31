@@ -4,7 +4,7 @@ DOCKER := docker run --rm -it \
             -v $(HOME)/.ssh:/root/.ssh:ro \
             $(IMAGE)
 
-.PHONY: build ping bootstrap check run playbook vault explain
+.PHONY: build ping bootstrap check run playbook vault edit-vault view-vault explain
 
 ## Build the Ansible Docker image
 build:
@@ -38,6 +38,14 @@ playbook: build
 vault: build
 	$(DOCKER) ansible-vault $(CMD)
 
+## Edit group_vars/homelab/vault.yml in $EDITOR (decrypts and re-encrypts)
+edit-vault: build
+	$(DOCKER) ansible-vault edit group_vars/homelab/vault.yml
+
+## Print the decrypted group_vars/homelab/vault.yml (read-only)
+view-vault: build
+	$(DOCKER) ansible-vault view group_vars/homelab/vault.yml
+
 ## Show all available make targets with descriptions
 explain:
 	@echo ""
@@ -50,5 +58,7 @@ explain:
 	@echo "  run                         Apply all playbooks (site.yml)"
 	@echo "  playbook PLAYBOOK=path.yml  Run a single playbook (optional: ARGS=...)"
 	@echo "  vault CMD='...'             Run an ansible-vault command"
+	@echo "  edit-vault                  Edit group_vars/homelab/vault.yml in \$$EDITOR"
+	@echo "  view-vault                  Print the decrypted group_vars/homelab/vault.yml"
 	@echo "  explain                     Show this help message"
 	@echo ""
