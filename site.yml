@@ -9,6 +9,8 @@
   import_playbook: playbooks/immich.yml
 - name: Deploy AdGuard Home
   import_playbook: playbooks/adguard.yml
+- name: Deploy Traefik
+  import_playbook: playbooks/traefik.yml
 - name: Set up restic backups
   import_playbook: playbooks/restic.yml
 - name: Set up server-down heartbeat

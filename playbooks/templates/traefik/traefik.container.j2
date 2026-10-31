@@ -1,0 +1,24 @@
+[Unit]
+Description=Traefik reverse proxy
+After=network-online.target
+Wants=network-online.target
+
+[Container]
+Image=docker.io/library/traefik:{{ traefik_version }}
+ContainerName=traefik
+# Host networking: Traefik binds 80/443 on the host and reaches Immich on
+# 127.0.0.1:2283 without a published port. ufw limits 80/443 to the LAN and WireGuard.
+Network=host
+Exec=--configFile=/etc/traefik/traefik.yaml
+EnvironmentFile=/etc/traefik/traefik.env
+Volume=/etc/traefik/traefik.yaml:/etc/traefik/traefik.yaml:ro
+Volume=/etc/traefik/dynamic:/etc/traefik/dynamic:ro
+Volume=/etc/traefik/acme:/etc/traefik/acme
+Volume=/etc/localtime:/etc/localtime:ro
+
+[Service]
+Restart=always
+TimeoutStartSec=300
+
+[Install]
+WantedBy=multi-user.target
