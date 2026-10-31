@@ -252,11 +252,20 @@ Tasks:
 
 ### 3. Traefik — reverse proxy
 
-- Clean URLs (`immich.home`, `uptime.home` etc) instead of raw IPs and ports
-- Automatic TLS via Let's Encrypt when exposing via Cloudflare Tunnel
+- Clean URLs (`immich.froeb.se`, `uptime.froeb.se` etc) instead of raw IPs and ports
+- Names are LAN-only for now: AdGuard rewrites `*.froeb.se` to the server. The
+  public name for Immich (`foto.froeb.se`) comes with the tunnel, under the same
+  wildcard cert
+- TLS: one wildcard `*.froeb.se` from Let's Encrypt via Cloudflare DNS-01
+  (`playbooks/traefik.yml`, token in vault as `traefik_cf_dns_api_token`). Cert
+  state is in `/etc/traefik/acme` and isn't backed up
 - Single entry point — do this before adding more services
-- [ ] Playbook: deploy Traefik container + config
-- [ ] Migrate Immich to sit behind Traefik
+- [x] Playbook: deploy Traefik container + config (`playbooks/traefik.yml`, routes
+      in `playbooks/templates/traefik/routes.yaml.j2`). Wildcard issued 2026-10-31
+- [ ] AdGuard rewrite (UI): wildcard `*.froeb.se` → `192.168.88.6`. One rule
+      covers every Traefik service, so no per-service DNS. Lives in the UI until
+      `adguard-pull` captures it with the rest of the config
+- [ ] Migrate Immich to sit behind Traefik (close the direct `:2283` publish)
 
 ### 4. Cloudflare Tunnel — external access
 
