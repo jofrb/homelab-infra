@@ -48,6 +48,14 @@
         src: "{{ item }}"
       loop: "{{ allowed_networks }}"
 
+    - name: Allow HTTP and HTTPS to Traefik from LAN and WireGuard
+      community.general.ufw:
+        rule: allow
+        port: "{{ item.1 }}"
+        proto: tcp
+        src: "{{ item.0 }}"
+      loop: "{{ traefik_allowed_networks | product(['80', '443']) | list }}"
+
     - name: Allow container-to-container and container-to-host traffic (Podman)
       community.general.ufw:
         rule: allow

@@ -18,6 +18,11 @@ adguard_admin_user: admin
 wireguard_network: "10.0.0.0/24"
 adguard_allowed_networks: "{{ allowed_networks + [wireguard_network] }}"
 
+# Traefik
+# LAN plus WireGuard: WireGuard clients resolve *.froeb.se through AdGuard to the
+# LAN IP, so they reach Traefik on 80/443 the same way LAN clients do.
+traefik_allowed_networks: "{{ allowed_networks + [wireguard_network] }}"
+
 # Restic / Backblaze B2
 restic_b2_bucket: strutserver-restic-backup
 restic_backup_paths:
