@@ -18,7 +18,10 @@ adguard_admin_user: admin
 wireguard_network: "10.0.0.0/24"
 adguard_allowed_networks: "{{ allowed_networks + [wireguard_network] }}"
 
-# Traefik
+# Traefik (reverse proxy, wildcard cert via Cloudflare DNS-01)
+traefik_version: v3.7.17
+traefik_domain: froeb.se
+traefik_acme_email: johan@froeb.se
 # LAN plus WireGuard: WireGuard clients resolve *.froeb.se through AdGuard to the
 # LAN IP, so they reach Traefik on 80/443 the same way LAN clients do.
 traefik_allowed_networks: "{{ allowed_networks + [wireguard_network] }}"
@@ -38,3 +41,4 @@ restic_backup_paths:
 #   restic_repository_password: <strong passphrase, e.g. openssl rand -base64 32>
 #   healthchecks_ping_key:      <healthchecks.io project ping key (Settings → Ping key)>
 #   adguard_admin_password:     <strong password for the AdGuard Home web UI>
+#   traefik_cf_dns_api_token:   <Cloudflare account API token: Zone Read + DNS Edit on froeb.se>
