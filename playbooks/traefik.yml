@@ -1,0 +1,128 @@
+---
+# Deploy Traefik as the reverse proxy for LAN services via a Podman Quadlet.
+#
+# Host networking on ports 80 and 443 (ufw limits them to the LAN and WireGuard).
+# Routes are rendered from templates into Traefik's file provider rather than
+# read from a container socket, so they stay in git and nothing gets the
+# container runtime's API.
+#
+# Certificates: one wildcard for *.froeb.se from Let's Encrypt, using a DNS-01
+# challenge on Cloudflare. The token needs Zone:Zone:Read and Zone:DNS:Edit on
+# froeb.se only. Cert state lives in /etc/traefik/acme; it can be re-issued, so
+# it isn't in the restic backup (Let's Encrypt rate limits apply to re-issuing).
+#
+# Prerequisites:
+#   1. playbooks/podman.yml applied first.
+#   2. vault.yml must contain:
+#        traefik_cf_dns_api_token: <Cloudflare account API token>
+#   3. AdGuard Home DNS rewrite (UI): immich.froeb.se -> 192.168.88.6
+#
+# Verify (from a LAN machine, before the rewrite exists):
+#   curl -vI --resolve immich.froeb.se:443:192.168.88.6 https://immich.froeb.se
+#
+# Run:
+#   ansible-playbook playbooks/traefik.yml --ask-vault-pass
+
+- name: Deploy Traefik
+  hosts: homelab
+  become: true
+
+  tasks:
+    - name: Require the Cloudflare DNS token in the vault
+      ansible.builtin.assert:
+        that: traefik_cf_dns_api_token is defined
+        fail_msg: "traefik_cf_dns_api_token is missing from group_vars/homelab/vault.yml"
+        quiet: true
+
+    - name: Create Traefik directories
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: directory
+        owner: root
+        group: root
+        mode: "0700"
+      loop:
+        - /etc/traefik
+        - /etc/traefik/dynamic
+        - /etc/traefik/acme
+
+    # Traefik refuses to start if acme.json is group- or world-readable.
+    - name: Create the ACME store with restrictive permissions
+      ansible.builtin.copy:
+        content: ""
+        dest: /etc/traefik/acme/acme.json
+        force: false
+        owner: root
+        group: root
+        mode: "0600"
+
+    - name: Deploy Traefik static config
+      ansible.builtin.template:
+        src: "{{ playbook_dir }}/templates/traefik/traefik.yaml.j2"
+        dest: /etc/traefik/traefik.yaml
+        owner: root
+        group: root
+        mode: "0644"
+      notify: Restart Traefik
+
+    # The file provider watches this directory, so route changes apply without
+    # a restart.
+    - name: Deploy Traefik routes
+      ansible.builtin.template:
+        src: "{{ playbook_dir }}/templates/traefik/routes.yaml.j2"
+        dest: /etc/traefik/dynamic/routes.yaml
+        owner: root
+        group: root
+        mode: "0644"
+
+    - name: Deploy Traefik environment file with the Cloudflare token
+      ansible.builtin.template:
+        src: "{{ playbook_dir }}/templates/traefik/traefik.env.j2"
+        dest: /etc/traefik/traefik.env
+        owner: root
+        group: root
+        mode: "0600"
+      notify: Restart Traefik
+      no_log: true  # contains the DNS API token
+
+    - name: Deploy Traefik container Quadlet
+      ansible.builtin.template:
+        src: "{{ playbook_dir }}/templates/traefik/traefik.container.j2"
+        dest: /etc/containers/systemd/traefik.container
+        owner: root
+        group: root
+        mode: "0644"
+      notify:
+        - Reload systemd
+        - Restart Traefik
+
+    # Quadlet units only exist after the generator runs, so reload before starting.
+    - name: Apply pending systemd reload/restart
+      ansible.builtin.meta: flush_handlers
+
+    - name: Enable and start Traefik
+      ansible.builtin.systemd:
+        name: traefik.service
+        enabled: true
+        state: started
+      # In --check the Quadlet isn't generated yet on first deploy, so the
+      # unit doesn't exist and this would fail.
+      ignore_errors: "{{ ansible_check_mode }}"
+
+    - name: Wait for Traefik to listen on HTTPS
+      ansible.builtin.wait_for:
+        host: 127.0.0.1
+        port: 443
+        timeout: 120
+      when: not ansible_check_mode
+
+  handlers:
+    - name: Reload systemd
+      ansible.builtin.systemd:
+        daemon_reload: true
+
+    - name: Restart Traefik
+      ansible.builtin.systemd:
+        name: traefik.service
+        state: restarted
+      ignore_errors: "{{ ansible_check_mode }}"

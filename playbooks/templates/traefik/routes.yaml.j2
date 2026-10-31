@@ -1,0 +1,27 @@
+# Traefik routes. Ansible owns this file; add a router per service here.
+#
+# The wildcard cert is requested by the first router that names it and is
+# reused by every other router on *.{{ traefik_domain }}.
+#
+# Immich is still published directly on :2283. Moving its access behind this
+# router and closing that port is a separate change.
+
+http:
+  routers:
+    immich:
+      rule: "Host(`immich.{{ traefik_domain }}`)"
+      entryPoints:
+        - websecure
+      service: immich
+      tls:
+        certResolver: letsencrypt
+        domains:
+          - main: "{{ traefik_domain }}"
+            sans:
+              - "*.{{ traefik_domain }}"
+
+  services:
+    immich:
+      loadBalancer:
+        servers:
+          - url: "http://127.0.0.1:2283"
