@@ -316,37 +316,71 @@ Tasks:
 - [ ] Playbook: deploy Umami
 - [ ] Add script tag to GitHub Pages site
 
-### 8. Knowledge repository — Syncthing + git history + Codex CLI access
+### 8. Knowledge repository — one store for every LLM interaction
 
-- **Sync:** Syncthing, three peers — Mac, phone, server — all over WireGuard only
-  (disable public discovery/relay servers, no NAT traversal needed)
-- Obsidian vault lives at `/data/knowledge` on the server (own ZFS dataset,
-  mirrors the `data/photos` pattern); iOS via Möbius Sync (~$10 one-time,
-  since Syncthing itself doesn't run standalone on iOS)
-- **History:** small watcher on the server (`inotify` + debounce, systemd
-  path unit) auto-commits `/data/knowledge` to a local git repo on every
-  change — catches edits from any peer (Mac, phone, or agent) without
-  needing a git client on mobile. Improves conflict *resolution*
-  (diff/merge a `.sync-conflict` file) — doesn't prevent Syncthing conflicts
-  from occurring in the first place
-- **Intelligence access:** Codex CLI installed on the server, run inside
-  `tmux` for persistence; ChatGPT mobile app's remote relay (QR-pair) gives
-  phone-initiated *new* sessions, not just reattach — the gap Claude Code's
-  remote control has today. Inference always runs on OpenAI's servers
-  regardless of where the CLI is invoked from, so server hardware is a
-  non-issue
-- **Backup:** extend the restic → B2 setup (see item 1) to also cover
-  `/data/knowledge`, with its own tag; consider a tighter retention window
-  than the daily photos timer since text changes are cheap to snapshot —
-  decide when picking this up
-- [ ] Playbook: deploy Syncthing (Mac + phone + server peers)
+Goal: every interaction with any LLM (Claude, OpenAI, future providers) lands in
+one provider-agnostic store on the server, reusable whichever provider is used
+that month or year. The store is the product; harnesses and providers are
+replaceable clients.
+
+**Constraints:**
+- Subscriptions only for the official clients (Claude Code, Codex CLI). No
+  subscription OAuth in custom harnesses, and no model calls in the store itself.
+  Terms: Claude Pro/Max OAuth is for Claude Code and claude.ai only; Codex sign-in
+  reuse by third-party tools isn't clearly allowed. Re-check before adding anything
+- Consumer web/mobile apps (claude.ai, ChatGPT) can't reach the LAN store live.
+  They get history through exports and manual upload
+- Syncthing comes last: sync only once the layout is settled
+
+**Layout** (`/data/knowledge`, own ZFS dataset):
+- `projects/<slug>/` — `README.md` (frontmatter), `notes/`, `conversations/`, `sources/`
+- `areas/` — ongoing non-project topics (health, finance, reading)
+- `_inbox/` — unsorted captures, triaged later
+- `_templates/` — project and conversation templates
+- `raw/<provider>/` — untouched provider JSON, never edited; Markdown is re-rendered
+  from here if the format changes
+
+**Conversation format:** one Markdown file per conversation, `## User` /
+`## Assistant` turns, frontmatter: `id`, `provider`, `model`, `project` (null →
+`_inbox/`), `started`, `source` (`claude-code` | `codex` | `export`), `raw` (path).
+
+**Search:** SQLite FTS5 index, rebuilt by the watcher on change. Embeddings
+(sqlite-vec) only once keyword search isn't enough.
+
+**Access:** `kb` CLI (new project from template, search, read) plus an MCP server
+(`search`, `read`, `list_projects`, `create_project`, `append_note`) so Claude Code
+and Codex CLI see identical data. Phone access over WireGuard comes in phase 4.
+
+Phase 1 — structure and history
 - [ ] Create `data/knowledge` ZFS dataset, mount at `/data/knowledge`
-- [ ] Set up Obsidian vault sync (Mac, phone via Möbius Sync)
-- [ ] Playbook: git auto-commit watcher for `/data/knowledge`
-- [ ] Install Codex CLI on server, verify `tmux` persistence works over SSH
-- [ ] Pair ChatGPT mobile app remote relay to the server
-- [ ] Extend restic backup paths + tag for `/data/knowledge` (after item 1
-      is done)
+- [ ] Playbook: layout, templates, and `kb` script (new project from template,
+      refuses to overwrite, kebab-case slugs)
+- [ ] Playbook: git auto-commit watcher (`inotify` + debounce, systemd path unit).
+      Every change is committed, so there's an audit trail whichever client wrote it
+- [ ] Extend restic → B2 to `/data/knowledge` with its own tag (after item 1 is
+      done). Consider a tighter retention window than photos; text is cheap to snapshot
+
+Phase 2 — capture
+- [ ] Converter: provider data exports (ChatGPT, Claude) from `_inbox/` into
+      `raw/` and `conversations/`
+- [ ] Capture from Claude Code (hooks writing finished sessions) and Codex CLI
+      (session files). Verify current file locations and hook events first
+- [ ] Run Claude Code and Codex CLI on the server in `tmux`, signed in with own
+      subscriptions. Verify `tmux` persistence over SSH
+
+Phase 3 — search and access
+- [ ] FTS5 index, rebuilt on change
+- [ ] MCP server; connect Claude Code and Codex CLI to it
+- [ ] `kb search` and `kb read` subcommands
+
+Phase 4 — sync and phone
+- [ ] Playbook: Syncthing (Mac, phone, server; WireGuard only, discovery and relay off)
+- [ ] Obsidian vault sync: Mac, and phone via Möbius Sync (~$10 one-time, since
+      Syncthing doesn't run on iOS)
+- [ ] HTTP endpoint over WireGuard for phone search and read
+- [ ] Semantic search (sqlite-vec), only if FTS isn't enough
+- [ ] Evaluate ChatGPT mobile remote relay for phone-initiated sessions. Check
+      subscription terms first
 
 ### 9. Paperless-ngx — document archive
 
