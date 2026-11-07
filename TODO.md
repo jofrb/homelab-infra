@@ -481,6 +481,36 @@ Tasks:
 - [ ] Migrate `group_vars/homelab/vault.yml` to SOPS format
 - [ ] Rotate vault password after migration (git history contains old encrypted vault)
 
+### 20. Model routing and budget — for the knowledge router (item 8)
+
+- Route by data class: personal content (family, kids, finance, health, Paperless)
+  goes to the paid tier only; non-personal content goes to the Gemini free tier first,
+  with paid fallback on quota or 429
+- Gemini free tier is available on the account (confirmed 2026-11-07). Unpaid-tier data
+  may be used to improve Google products and may be human-reviewed, so no personal
+  data goes there
+- [ ] Record `data_policy: free | paid` on every enriched item
+- [ ] Monthly total spend ceiling in the router ledger (SQLite, tokens × price per call).
+      Refuse calls past the ceiling. Total only, no per-provider limits. Counts only
+      calls that go through the router
+- [ ] Price table in config, checked against provider pricing pages (prices change)
+- [ ] No Google Cloud billing kill switch (not needed with the router ledger)
+
+### 21. Remote coding and phone access
+
+- All coding happens on the server, using subscriptions through the official CLIs
+- Phase 1, server as dev box:
+  - [ ] nix-config on the server (home-manager, Linux). See nix-config TODO
+  - [ ] Claude Code and Gemini CLI on the server, signed in with own accounts
+        (check Gemini CLI terms first)
+  - [ ] Projects directory on the server, convention TBD
+- Phase 2, phone:
+  - [ ] mosh and tmux on the server; ufw allows UDP 60000–61000 from the WireGuard
+        subnet only
+  - [ ] Blink Shell (paid, one-time) with a Secure Enclave key:
+        `mosh <host> -- tmux new -A -s main`
+  - [ ] Verify reattach over cellular and across Wi-Fi switches
+
 ## Backlog / polish
 
 - [ ] Pin `ansible_python_interpreter: /usr/bin/python3.12` in `group_vars/all.yml` to silence discovery warning
