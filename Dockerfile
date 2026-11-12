@@ -1,6 +1,6 @@
 # Pinned by digest (not just the floating "3.12-slim" tag) for reproducible
 # builds — Renovate (see renovate.json) keeps this current.
-FROM python:3.12-slim@sha256:2f17fc044b579bab302c2e8054d3a686e2cb9a83de48e70534b94cd8ebbe06a9
+FROM python:3.12-slim@sha256:5e2bdb1b0d542d5039cffb8181c65930093949194a65c365dfb1b0fe13a4fa5b
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends openssh-client sshpass vim-tiny less \
