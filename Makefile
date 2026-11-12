@@ -4,7 +4,7 @@ DOCKER := docker run --rm -it \
             -v $(HOME)/.ssh:/root/.ssh:ro \
             $(IMAGE)
 
-.PHONY: build ping bootstrap check run playbook lint vault edit-vault view-vault explain
+.PHONY: build ping bootstrap check run playbook lint test vault edit-vault view-vault explain
 
 ## Build the Ansible Docker image
 build:
@@ -38,6 +38,12 @@ playbook: build
 lint: build
 	$(DOCKER) ansible-lint
 
+## Run all tests: lint, then the knowledge store checks on the server over ssh.
+## scripts/zfs-scrub-test.sh is not included: it runs as root on the server and
+## creates a scratch pool, so run it by hand.
+test: lint
+	scripts/knowledge-store-test.sh
+
 ## Run ansible-vault commands. Usage: make vault CMD="create group_vars/homelab_vault.yml"
 vault: build
 	$(DOCKER) ansible-vault $(CMD)
@@ -62,6 +68,7 @@ explain:
 	@echo "  run                         Apply all playbooks (site.yml)"
 	@echo "  playbook PLAYBOOK=path.yml  Run a single playbook (optional: ARGS=...)"
 	@echo "  lint                        Run ansible-lint (same check as CI)"
+	@echo "  test                        Run lint and the knowledge store checks on the server"
 	@echo "  vault CMD='...'             Run an ansible-vault command"
 	@echo "  edit-vault                  Edit group_vars/homelab/vault.yml in \$$EDITOR"
 	@echo "  view-vault                  Print the decrypted group_vars/homelab/vault.yml"
