@@ -61,12 +61,14 @@
           dest: conversation/conversation.md
 
     # Skipped in check mode: the dataset isn't created there, so the directory
-    # this runs in doesn't exist yet.
-    - name: Initialise git repo for the audit trail
+    # this runs in doesn't exist yet. No Ansible module runs `git init`, so
+    # command is the only option here.
+    - name: Initialise git repo for the audit trail  # noqa: command-instead-of-module
       ansible.builtin.command:
         cmd: git init --quiet
         chdir: "{{ knowledge_dir }}"
         creates: "{{ knowledge_dir }}/.git"
+      become: true
       become_user: "{{ knowledge_owner }}"
       when: not ansible_check_mode
 
