@@ -20,7 +20,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install ansible ansible-lint
+          pip install "ansible~=14.6.0" ansible-lint==26.6.0
           ansible-galaxy collection install -r requirements.yml
 
       - name: Write vault password
