@@ -18,6 +18,11 @@ adguard_admin_user: admin
 wireguard_network: "10.0.0.0/24"
 adguard_allowed_networks: "{{ allowed_networks + [wireguard_network] }}"
 
+# Knowledge store (TODO item 8): owned by the human login so kb and the Claude Code
+# and Codex sessions on the server can all write to it.
+knowledge_dir: /data/knowledge
+knowledge_owner: u1frob
+
 # Traefik (reverse proxy, wildcard cert via Cloudflare DNS-01)
 traefik_version: v3.7.17
 traefik_domain: froeb.se
