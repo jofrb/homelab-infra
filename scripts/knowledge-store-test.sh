@@ -24,7 +24,7 @@ PROJECT=$ROOT/projects/$SLUG
 
 fail() { echo "FAIL: $*" >&2; exit 1; }
 ok() { echo "ok    $*"; }
-cleanup() { [[ -d "$PROJECT" ]] && rm -rf -- "$PROJECT"; }
+cleanup() { if [[ -d "$PROJECT" ]]; then rm -rf -- "$PROJECT"; fi; }
 trap cleanup EXIT
 
 [[ $(findmnt -n -o SOURCE "$ROOT") == data/knowledge ]] || fail "$ROOT is not the data/knowledge dataset"
