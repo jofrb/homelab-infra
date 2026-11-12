@@ -1,0 +1,79 @@
+---
+# Lay out the knowledge store (/data/knowledge): directories, project and
+# conversation templates, a git repo for the audit trail, and the `kb` CLI.
+#
+# Templates are copied verbatim, not rendered by Ansible: their {{placeholders}}
+# are filled in by kb, not by Jinja. Ansible owns _templates/, so edit them in
+# the repo, not in the store (re-running this playbook overwrites local edits).
+#
+# Prerequisites:
+#   playbooks/zfs.yml applied first (creates the data/knowledge dataset).
+#
+# Run:
+#   ansible-playbook playbooks/knowledge.yml
+
+- name: Set up knowledge store layout and kb CLI
+  hosts: homelab
+  become: true
+
+  tasks:
+    - name: Install git
+      ansible.builtin.apt:
+        name: git
+        state: present
+        update_cache: true
+
+    - name: Create knowledge store root
+      ansible.builtin.file:
+        path: "{{ knowledge_dir }}"
+        state: directory
+        owner: "{{ knowledge_owner }}"
+        group: "{{ knowledge_owner }}"
+        mode: "0750"
+
+    - name: Create knowledge store directories
+      ansible.builtin.file:
+        path: "{{ knowledge_dir }}/{{ item }}"
+        state: directory
+        owner: "{{ knowledge_owner }}"
+        group: "{{ knowledge_owner }}"
+        mode: "0750"
+      loop:
+        - projects
+        - areas
+        - _inbox
+        - _templates
+        - _templates/project
+        - _templates/conversation
+        - raw
+
+    - name: Deploy project and conversation templates
+      ansible.builtin.copy:
+        src: "{{ playbook_dir }}/templates/knowledge/{{ item.src }}"
+        dest: "{{ knowledge_dir }}/_templates/{{ item.dest }}"
+        owner: "{{ knowledge_owner }}"
+        group: "{{ knowledge_owner }}"
+        mode: "0640"
+      loop:
+        - src: project-README.md
+          dest: project/README.md
+        - src: conversation.md
+          dest: conversation/conversation.md
+
+    # Skipped in check mode: the dataset isn't created there, so the directory
+    # this runs in doesn't exist yet.
+    - name: Initialise git repo for the audit trail
+      ansible.builtin.command:
+        cmd: git init --quiet
+        chdir: "{{ knowledge_dir }}"
+        creates: "{{ knowledge_dir }}/.git"
+      become_user: "{{ knowledge_owner }}"
+      when: not ansible_check_mode
+
+    - name: Deploy kb CLI
+      ansible.builtin.copy:
+        src: "{{ playbook_dir }}/templates/knowledge/kb.py"
+        dest: /usr/local/bin/kb
+        owner: root
+        group: root
+        mode: "0755"
