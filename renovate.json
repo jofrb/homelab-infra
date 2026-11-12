@@ -26,6 +26,13 @@
       "enabled": false
     },
     {
+      "description": "CI's setup-python version moves with the controller base image; Python minors are bumped by hand together with ansible",
+      "matchManagers": ["github-actions"],
+      "matchDepNames": ["python"],
+      "matchUpdateTypes": ["major", "minor"],
+      "enabled": false
+    },
+    {
       "description": "ansible major bumps change the bundled collection set — manual review via the dependency dashboard",
       "matchDepNames": ["ansible"],
       "matchUpdateTypes": ["major"],
