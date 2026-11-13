@@ -7,7 +7,7 @@ When picking up work, scan the **In progress** and **Next up** sections.
 
 - **Server:** Ubuntu 24.04.4 LTS, 32 GB RAM, ZFS pool `data` (3.51T, single 4TB NVMe)
 - **VPN:** WireGuard on router, Mac, and phone
-- **Ansible:** Dockerized runner on Mac — image pinned by digest, `ansible==10.7.0`,
+- **Ansible:** Dockerized runner on Mac — image pinned by digest, `ansible==14.6.0`,
   Galaxy collections pinned in `requirements.yml`. Server-side apt packages
   (podman, zfsutils-linux, restic) stay unpinned on purpose — Ubuntu's archive only
   keeps the latest revision per release, so hardcoding a version there risks
@@ -466,8 +466,8 @@ Tasks:
 - [ ] Playbook: install and register GitHub Actions self-hosted runner
 - [ ] `.github/workflows/ci.yml` — lint (GitHub-hosted) + dry-run (self-hosted)
 - [x] Pin all Actions to commit hash (already the case in `ci.yml`)
-- [ ] Add `renovate.json` (Actions digests, Dockerfile digest, Galaxy collections)
-- [ ] Install the Renovate GitHub App on this repo (config alone doesn't run it —
+- [x] Add `renovate.json` (Actions digests, Dockerfile digest, Galaxy collections)
+- [x] Install the Renovate GitHub App on this repo (config alone doesn't run it —
       see item 16 note)
 - [ ] Enable "Require approval for outside collaborators"
 - [ ] Make repo public
