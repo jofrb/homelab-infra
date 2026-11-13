@@ -5,10 +5,18 @@
   "customManagers": [
     {
       "customType": "regex",
-      "description": "ansible pinned in the Dockerfile pip install",
-      "managerFilePatterns": ["/(^|/)Dockerfile$/"],
+      "description": "ansible pinned in the Dockerfile and CI pip install",
+      "managerFilePatterns": ["/(^|/)Dockerfile$/", "/^\\.github\\/workflows\\/.+\\.ya?ml$/"],
       "matchStrings": ["pip install[^\\n]*?\\bansible==(?<currentValue>[0-9][^\\s\\\\]*)"],
       "depNameTemplate": "ansible",
+      "datasourceTemplate": "pypi"
+    },
+    {
+      "customType": "regex",
+      "description": "ansible-lint pinned in the Dockerfile and CI pip install",
+      "managerFilePatterns": ["/(^|/)Dockerfile$/", "/^\\.github\\/workflows\\/.+\\.ya?ml$/"],
+      "matchStrings": ["pip install[^\\n]*?\\bansible-lint==(?<currentValue>[0-9][^\\s\\\\]*)"],
+      "depNameTemplate": "ansible-lint",
       "datasourceTemplate": "pypi"
     }
   ],
