@@ -7,7 +7,7 @@ RUN apt-get update \
     && ln -s /usr/bin/vim.tiny /usr/local/bin/vi \
     && rm -rf /var/lib/apt/lists/*
 
-RUN pip install --no-cache-dir ansible==14.6.0 ansible-lint==26.11.0
+RUN pip install --no-cache-dir ansible==14.6.0 ansible-lint==26.11.1
 
 WORKDIR /ansible
 
